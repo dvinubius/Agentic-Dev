@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic Development Methodology — Visual Guide</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #f5efe3;
+      --paper-light: #fbf7ef;
+      --ink: #202622;
+      --muted: #66706a;
+      --rust: #a64f32;
+      --rust-light: #e7c5b7;
+      --teal: #256d68;
+      --teal-light: #bcd8d2;
+      --line: #d8cebd;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Bricolage Grotesque", sans-serif;
+    }
+
+    .display {
+      font-family: "Instrument Serif", serif;
+      font-weight: 400;
+    }
+
+    .slide {
+      min-height: 92vh;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      padding: 5rem 1.5rem;
+    }
+
+    .eyebrow {
+      color: var(--rust);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .card {
+      background: rgba(251, 247, 239, 0.82);
+      border: 1px solid var(--line);
+      border-radius: 1.25rem;
+      box-shadow: 0 18px 60px rgba(55, 45, 33, 0.07);
+    }
+
+    .code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .step-number {
+      align-items: center;
+      background: var(--ink);
+      border-radius: 999px;
+      color: var(--paper-light);
+      display: inline-flex;
+      flex: 0 0 auto;
+      font-size: 0.8rem;
+      font-weight: 700;
+      height: 2rem;
+      justify-content: center;
+      width: 2rem;
+    }
+
+    .dot-grid {
+      background-image: radial-gradient(rgba(32, 38, 34, 0.14) 1px, transparent 1px);
+      background-size: 18px 18px;
+    }
+
+    .flow-line {
+      background: var(--line);
+      height: 2px;
+    }
+
+    @media (max-width: 767px) {
+      .slide {
+        min-height: auto;
+        padding: 4rem 1.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sticky top-0 z-50 border-b border-[#d8cebd] bg-[#f5efe3]/95 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3">
+      <a href="#start" class="text-sm font-bold tracking-tight">Agentic Dev · Visual Guide</a>
+      <div class="hidden items-center gap-5 text-xs font-semibold text-[#66706a] md:flex">
+        <a class="hover:text-[#a64f32]" href="#model">Mental model</a>
+        <a class="hover:text-[#a64f32]" href="#routes">Work routes</a>
+        <a class="hover:text-[#a64f32]" href="#workflow">Task workflow</a>
+        <a class="hover:text-[#a64f32]" href="#example">Example</a>
+        <a class="hover:text-[#a64f32]" href="#start-using">Start using it</a>
+      </div>
+      <span class="rounded-full border border-[#d8cebd] px-3 py-1 text-[11px] font-semibold text-[#66706a]">Beginner guide</span>
+    </div>
+  </nav>
+
+  <main>
+    <section id="start" class="slide dot-grid">
+      <div class="mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[1.08fr_.92fr]">
+        <div>
+          <p class="eyebrow mb-5">The core lesson</p>
+          <h1 class="display max-w-4xl text-5xl leading-[0.98] tracking-[-0.03em] md:text-7xl">
+            The repository is the shared memory.
+          </h1>
+          <p class="mt-7 max-w-2xl text-lg leading-8 text-[#525d57] md:text-xl">
+            You remain the strategist. The agent investigates and executes one governed line of work at a time.
+            Specs, task files, tests, code, and documentation preserve the truth after the chat ends.
+          </p>
+          <div class="mt-9 flex flex-wrap gap-3 text-sm font-semibold">
+            <span class="rounded-full bg-[#202622] px-4 py-2 text-[#fbf7ef]">Engineer decides</span>
+            <span class="rounded-full bg-[#a64f32] px-4 py-2 text-white">One active task</span>
+            <span class="rounded-full bg-[#256d68] px-4 py-2 text-white">Evidence stays in Git</span>
+          </div>
+        </div>
+
+        <div class="card p-5 md:p-8">
+          <svg viewBox="0 0 620 480" class="h-auto w-full" role="img" aria-labelledby="hero-diagram-title hero-diagram-desc">
+            <title id="hero-diagram-title">Engineer, repository, and agent coordination loop</title>
+            <desc id="hero-diagram-desc">The engineer directs work through repository artifacts, the agent reads and updates those artifacts, and evidence returns to the engineer for review.</desc>
+            <defs>
+              <marker id="arrow-rust" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#a64f32"/>
+              </marker>
+              <marker id="arrow-teal" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#256d68"/>
+              </marker>
+            </defs>
+            <rect x="185" y="170" width="250" height="140" rx="24" fill="#202622"/>
+            <text x="310" y="220" text-anchor="middle" dominant-baseline="middle" fill="#fbf7ef" font-size="25" font-weight="700">Repository</text>
+            <text x="310" y="255" text-anchor="middle" dominant-baseline="middle" fill="#d8cebd" font-size="16">intent · work · evidence</text>
+            <text x="310" y="282" text-anchor="middle" dominant-baseline="middle" fill="#d8cebd" font-size="16">durable and reviewable</text>
+
+            <rect x="35" y="35" width="190" height="86" rx="20" fill="#f7e7dc" stroke="#a64f32" stroke-width="2"/>
+            <text x="130" y="68" text-anchor="middle" dominant-baseline="middle" fill="#202622" font-size="20" font-weight="700">Engineer</text>
+            <text x="130" y="96" text-anchor="middle" dominant-baseline="middle" fill="#6e5145" font-size="14">strategy · approval</text>
+
+            <rect x="395" y="359" width="190" height="86" rx="20" fill="#dcece8" stroke="#256d68" stroke-width="2"/>
+            <text x="490" y="392" text-anchor="middle" dominant-baseline="middle" fill="#202622" font-size="20" font-weight="700">Agent</text>
+            <text x="490" y="420" text-anchor="middle" dominant-baseline="middle" fill="#3d6763" font-size="14">investigate · execute</text>
+
+            <path d="M186 116 C230 136, 255 144, 267 169" fill="none" stroke="#a64f32" stroke-width="4" marker-end="url(#arrow-rust)"/>
+            <text x="245" y="115" text-anchor="middle" fill="#a64f32" font-size="13" font-weight="700">direction</text>
+
+            <path d="M435 295 C462 321, 475 337, 481 358" fill="none" stroke="#256d68" stroke-width="4" marker-end="url(#arrow-teal)"/>
+            <text x="497" y="316" text-anchor="middle" fill="#256d68" font-size="13" font-weight="700">routed context</text>
+
+            <path d="M403 401 C270 428, 99 336, 91 123" fill="none" stroke="#a64f32" stroke-width="3" stroke-dasharray="8 8" marker-end="url(#arrow-rust)"/>
+            <text x="180" y="405" text-anchor="middle" fill="#a64f32" font-size="13" font-weight="700">diff + evidence + decisions</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide bg-[#202622] text-[#fbf7ef]">
+      <div class="mx-auto w-full max-w-7xl">
+        <p class="eyebrow mb-4 !text-[#e7a78e]">Why this exists</p>
+        <h2 class="display max-w-4xl text-4xl leading-tight md:text-6xl">Chat is useful workspace. It is poor project memory.</h2>
+        <div class="mt-12 grid gap-6 lg:grid-cols-2">
+          <article class="rounded-3xl border border-white/15 bg-white/5 p-7 md:p-9">
+            <div class="mb-6 flex items-center gap-3">
+              <span class="rounded-full bg-[#a64f32] px-3 py-1 text-xs font-bold uppercase tracking-wider">Before</span>
+              <h3 class="text-xl font-bold">Work lives in conversation</h3>
+            </div>
+            <ul class="space-y-4 text-[#d8cebd]">
+              <li class="flex gap-3"><span class="text-[#e7a78e]">×</span><span>Scope and decisions disappear across sessions.</span></li>
+              <li class="flex gap-3"><span class="text-[#e7a78e]">×</span><span>“Done” can mean code changed, even when tests or docs disagree.</span></li>
+              <li class="flex gap-3"><span class="text-[#e7a78e]">×</span><span>Several prompts can quietly become several competing workstreams.</span></li>
+              <li class="flex gap-3"><span class="text-[#e7a78e]">×</span><span>The engineer reviews summaries instead of durable evidence.</span></li>
+            </ul>
+          </article>
+
+          <article class="rounded-3xl border border-[#77a9a3] bg-[#256d68]/20 p-7 md:p-9">
+            <div class="mb-6 flex items-center gap-3">
+              <span class="rounded-full bg-[#256d68] px-3 py-1 text-xs font-bold uppercase tracking-wider">With the methodology</span>
+              <h3 class="text-xl font-bold">Work leaves a trail</h3>
+            </div>
+            <ul class="space-y-4 text-[#dcece8]">
+              <li class="flex gap-3"><span class="text-[#8fc3bc]">✓</span><span>Specs hold intended product behavior.</span></li>
+              <li class="flex gap-3"><span class="text-[#8fc3bc]">✓</span><span>Task files hold scope, plan, progress, and evidence.</span></li>
+              <li class="flex gap-3"><span class="text-[#8fc3bc]">✓</span><span><span class="code text-sm">CURRENT.md</span> names the one active task.</span></li>
+              <li class="flex gap-3"><span class="text-[#8fc3bc]">✓</span><span>The engineer reviews checkpoints, the actual diff, and verification.</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="model" class="slide">
+      <div class="mx-auto w-full max-w-7xl">
+        <div class="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
+          <div>
+            <p class="eyebrow mb-4">Reusable mental model</p>
+            <h2 class="display text-4xl leading-tight md:text-6xl">Four layers. One source of truth for each fact.</h2>
+            <p class="mt-6 max-w-xl text-lg leading-8 text-[#66706a]">
+              Ask which layer owns the information before adding it. Routing files tell the agent what to read next,
+              without loading the entire repository.
+            </p>
+          </div>
+          <div class="rounded-2xl border border-[#d8cebd] bg-[#fbf7ef] p-5 text-sm text-[#66706a]">
+            <strong class="text-[#202622]">Retell it this way:</strong>
+            specs say what should exist; tasks govern a change; code, tests, and docs say what exists now;
+            control files route and constrain the work.
+          </div>
+        </div>
+
+        <div class="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <article class="card border-t-4 border-t-[#a64f32] p-6">
+            <span class="code text-xs font-bold text-[#a64f32]">01 · specs/</span>
+            <h3 class="mt-4 text-2xl font-bold">Intent</h3>
+            <p class="mt-3 leading-7 text-[#66706a]">Canonical product and business behavior. It may intentionally be ahead of implementation.</p>
+            <p class="code mt-5 text-xs text-[#8a5a48]">README.md<br>domain-language.md<br>&lt;domain specs&gt;</p>
+          </article>
+
+          <article class="card border-t-4 border-t-[#b58a36] p-6">
+            <span class="code text-xs font-bold text-[#8a681f]">02 · agent/tasks/</span>
+            <h3 class="mt-4 text-2xl font-bold">Governed work</h3>
+            <p class="mt-3 leading-7 text-[#66706a]">Formal feature, issue-fix, and refactoring work with durable scope and progress.</p>
+            <p class="code mt-5 text-xs text-[#7a651f]">BRIEF.md<br>PLAN.md<br>PROGRESS.md</p>
+          </article>
+
+          <article class="card border-t-4 border-t-[#256d68] p-6">
+            <span class="code text-xs font-bold text-[#256d68]">03 · code + tests + docs/</span>
+            <h3 class="mt-4 text-2xl font-bold">Implemented reality</h3>
+            <p class="mt-3 leading-7 text-[#66706a]">What the system currently does, how that behavior is proven, and how it is explained.</p>
+            <p class="code mt-5 text-xs text-[#256d68]">tests/contracts ↔ code ↔ docs</p>
+          </article>
+
+          <article class="card border-t-4 border-t-[#202622] p-6">
+            <span class="code text-xs font-bold text-[#202622]">04 · AGENTS + CONTEXT</span>
+            <h3 class="mt-4 text-2xl font-bold">Control and routing</h3>
+            <p class="mt-3 leading-7 text-[#66706a]">Stable project rules, boundaries, paths, and the next relevant context to load.</p>
+            <p class="code mt-5 text-xs text-[#4d554f]">AGENTS.md<br>CONTEXT.md<br>CURRENT.md</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide bg-[#ebe1d1]">
+      <div class="mx-auto w-full max-w-7xl">
+        <p class="eyebrow mb-4">Words with precise meanings</p>
+        <h2 class="display max-w-4xl text-4xl leading-tight md:text-6xl">Learn these four terms first.</h2>
+        <div class="mt-12 grid gap-5 md:grid-cols-2">
+          <article class="rounded-3xl bg-[#fbf7ef] p-7 md:p-9">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="text-3xl font-bold">Task</h3>
+              <span class="rounded-full bg-[#202622] px-3 py-1 text-xs font-bold text-white">formal</span>
+            </div>
+            <p class="mt-4 leading-7 text-[#66706a]">A repository-tracked development work item with scope, artifacts, progress, evidence, and a lifecycle.</p>
+            <p class="mt-5 border-l-2 border-[#a64f32] pl-4 text-sm font-semibold">A prompt is not automatically a task.</p>
+          </article>
+
+          <article class="rounded-3xl bg-[#fbf7ef] p-7 md:p-9">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="text-3xl font-bold">Work</h3>
+              <span class="rounded-full border border-[#202622] px-3 py-1 text-xs font-bold">general</span>
+            </div>
+            <p class="mt-4 leading-7 text-[#66706a]">Anything requested from or performed by the agent: planning, task execution, an audit, or an approved informal change.</p>
+            <p class="mt-5 border-l-2 border-[#a64f32] pl-4 text-sm font-semibold">All tasks are work. Not all work is a task.</p>
+          </article>
+
+          <article class="rounded-3xl bg-[#fbf7ef] p-7 md:p-9">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="text-3xl font-bold">TPT</h3>
+              <span class="rounded-full bg-[#b58a36] px-3 py-1 text-xs font-bold text-white">progress</span>
+            </div>
+            <p class="mt-4 leading-7 text-[#66706a]"><strong>Task Progress Tracking</strong> is the resumable execution record inside the active task’s <span class="code text-sm">PROGRESS.md</span>.</p>
+            <p class="mt-5 border-l-2 border-[#b58a36] pl-4 text-sm font-semibold">It says where execution is and what evidence exists.</p>
+          </article>
+
+          <article class="rounded-3xl bg-[#fbf7ef] p-7 md:p-9">
+            <div class="flex items-start justify-between gap-4">
+              <h3 class="text-3xl font-bold">Omni-Sync</h3>
+              <span class="rounded-full bg-[#256d68] px-3 py-1 text-xs font-bold text-white">consistency</span>
+            </div>
+            <p class="mt-4 leading-7 text-[#66706a]">Tests and contracts, code, and implementation documentation agree about behavior already built.</p>
+            <p class="mt-5 border-l-2 border-[#256d68] pl-4 text-sm font-semibold">An unimplemented spec is not automatically drift.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="routes" class="slide">
+      <div class="mx-auto grid w-full max-w-7xl gap-12 lg:grid-cols-[.82fr_1.18fr] lg:items-center">
+        <div>
+          <p class="eyebrow mb-4">Choose the route before acting</p>
+          <h2 class="display text-4xl leading-tight md:text-6xl">Not every request enters the six-step workflow.</h2>
+          <p class="mt-6 text-lg leading-8 text-[#66706a]">
+            First read <span class="code text-base">agent/tasks/CURRENT.md</span>. If it names a task,
+            unrelated work waits. If it says <span class="code text-base">none</span>, choose the route that matches the request.
+          </p>
+          <div class="mt-8 rounded-2xl bg-[#202622] p-5 text-[#fbf7ef]">
+            <p class="code text-sm">Current task: none</p>
+            <p class="mt-2 text-sm text-[#d8cebd]">Planning, complementary work, or one task execution may begin.</p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <article class="card grid gap-4 p-5 sm:grid-cols-[3rem_1fr_auto] sm:items-center">
+            <div class="step-number !bg-[#a64f32]">P</div>
+            <div>
+              <h3 class="font-bold">Planning</h3>
+              <p class="mt-1 text-sm text-[#66706a]">Change specs, make a broad feature plan, create a task, refine a technical plan, or audit planning.</p>
+            </div>
+            <span class="code text-xs text-[#a64f32]">flexible</span>
+          </article>
+
+          <article class="card grid gap-4 p-5 sm:grid-cols-[3rem_1fr_auto] sm:items-center">
+            <div class="step-number">T</div>
+            <div>
+              <h3 class="font-bold">Task execution</h3>
+              <p class="mt-1 text-sm text-[#66706a]">Implement one formal feature, issue fix, or refactoring task through six reviewable steps.</p>
+            </div>
+            <span class="code text-xs text-[#202622]">governed</span>
+          </article>
+
+          <article class="card grid gap-4 p-5 sm:grid-cols-[3rem_1fr_auto] sm:items-center">
+            <div class="step-number !bg-[#256d68]">C</div>
+            <div>
+              <h3 class="font-bold">Complementary work</h3>
+              <p class="mt-1 text-sm text-[#66706a]">Run a bounded audit, review, docs refinement, clarification, or architecture investigation.</p>
+            </div>
+            <span class="code text-xs text-[#256d68]">skill-led</span>
+          </article>
+
+          <article class="card grid gap-4 p-5 sm:grid-cols-[3rem_1fr_auto] sm:items-center">
+            <div class="step-number !bg-[#8b8173]">I</div>
+            <div>
+              <h3 class="font-bold">Informal work</h3>
+              <p class="mt-1 text-sm text-[#66706a]">A confirmed exception for a non-trivial change outside formal routes. Trivial edits may proceed directly.</p>
+            </div>
+            <span class="code text-xs text-[#6f675d]">exception</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide bg-[#fbf7ef]">
+      <div class="mx-auto w-full max-w-7xl">
+        <div class="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-center">
+          <div>
+            <p class="eyebrow mb-4">Repository map</p>
+            <h2 class="display text-4xl leading-tight md:text-6xl">Start at the root. Follow the route.</h2>
+            <p class="mt-6 text-lg leading-8 text-[#66706a]">
+              You do not need to memorize every file. Read the root instructions, check the lock,
+              then enter only the area relevant to the work.
+            </p>
+          </div>
+
+          <div class="rounded-3xl border border-[#d8cebd] bg-[#202622] p-6 text-[#fbf7ef] md:p-9">
+            <div class="code text-sm leading-8 md:text-base">
+              <div><span class="text-[#e7a78e]">repo/</span></div>
+              <div class="pl-5"><span class="text-[#8fc3bc]">├── AGENTS.md</span> <span class="text-[#9fa8a2]">project rules + commands</span></div>
+              <div class="pl-5"><span class="text-[#8fc3bc]">├── CONTEXT.md</span> <span class="text-[#9fa8a2]">root router</span></div>
+              <div class="pl-5"><span class="text-[#e7a78e]">├── specs/</span> <span class="text-[#9fa8a2]">intended behavior</span></div>
+              <div class="pl-5"><span class="text-[#dfbd69]">├── agent/</span></div>
+              <div class="pl-10"><span class="text-[#dfbd69]">│   ├── tasks/</span> <span class="text-[#9fa8a2]">governed work</span></div>
+              <div class="pl-10"><span class="text-[#dfbd69]">│   └── skills/</span> <span class="text-[#9fa8a2]">bounded procedures</span></div>
+              <div class="pl-5"><span class="text-[#8fc3bc]">├── docs/</span> <span class="text-[#9fa8a2]">implemented system</span></div>
+              <div class="pl-5"><span class="text-[#d8cebd]">├── src/</span> <span class="text-[#9fa8a2]">application code</span></div>
+              <div class="pl-5"><span class="text-[#d8cebd]">└── tests/</span> <span class="text-[#9fa8a2]">behavioral proof</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-10 grid gap-4 md:grid-cols-3">
+          <div class="rounded-2xl border border-[#d8cebd] p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-[#a64f32]">AGENTS.md</p>
+            <p class="mt-2 font-semibold">Stable project-specific rules</p>
+          </div>
+          <div class="rounded-2xl border border-[#d8cebd] p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-[#256d68]">CONTEXT.md</p>
+            <p class="mt-2 font-semibold">Routing, invariants, and boundaries</p>
+          </div>
+          <div class="rounded-2xl border border-[#d8cebd] p-5">
+            <p class="text-xs font-bold uppercase tracking-wider text-[#8a681f]">SKILL.md</p>
+            <p class="mt-2 font-semibold">A bounded repeatable procedure</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="slide">
+      <div class="mx-auto w-full max-w-7xl">
+        <p class="eyebrow mb-4">Formal task execution</p>
+        <h2 class="display max-w-5xl text-4xl leading-tight md:text-6xl">Six checkpoints turn a request into reviewed evidence.</h2>
+        <p class="mt-6 max-w-3xl text-lg leading-8 text-[#66706a]">
+          The agent updates <span class="code text-base">PROGRESS.md</span> before every handoff.
+          The engineer may waive a gate explicitly, but the waiver is recorded.
+        </p>
+
+        <div class="mt-12 grid gap-4 lg:grid-cols-6">
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number">1</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#a64f32]">Approve</p>
+            <h3 class="mt-2 text-xl font-bold">Assess the plan</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Reconcile specs, brief, plan, code, tests, docs, and architecture boundaries.</p>
+          </article>
+
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number">2</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#a64f32]">Review</p>
+            <h3 class="mt-2 text-xl font-bold">Create tests</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Express acceptance criteria as tests or credible executable checks before implementation where feasible.</p>
+          </article>
+
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number">3</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#a64f32]">Review</p>
+            <h3 class="mt-2 text-xl font-bold">Implement</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Make the approved scoped change. Return to step 1 if design or scope changes materially.</p>
+          </article>
+
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number !bg-[#256d68]">4</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#256d68]">Verify</p>
+            <h3 class="mt-2 text-xl font-bold">Check and repair</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Run narrow checks, broaden by risk, repair failures, and run structured code review when required.</p>
+          </article>
+
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number">5</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#a64f32]">Review</p>
+            <h3 class="mt-2 text-xl font-bold">Update docs</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Document actual behavior and review whether architecture boundaries changed.</p>
+          </article>
+
+          <article class="card p-5 lg:min-h-[19rem]">
+            <div class="step-number !bg-[#a64f32]">6</div>
+            <p class="mt-5 text-xs font-bold uppercase tracking-wider text-[#a64f32]">Approve commit</p>
+            <h3 class="mt-2 text-xl font-bold">Conclude</h3>
+            <p class="mt-3 text-sm leading-6 text-[#66706a]">Finalize traceability, residual risk, activity status, task move, and lock release.</p>
+          </article>
+        </div>
+
+        <div class="mt-7 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
+          <div class="rounded-2xl bg-[#f0dfd7] p-5 text-sm">
+            <strong>Before execution:</strong> <span class="code">CURRENT.md</span> changes from <span class="code">none</span> to the task path.
+          </div>
+          <div class="hidden text-2xl text-[#a64f32] md:block">→</div>
+          <div class="rounded-2xl bg-[#dcece8] p-5 text-sm">
+            <strong>After approved closure:</strong> the task moves under <span class="code">done/</span> and the lock returns to <span class="code">none</span>.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="example" class="slide bg-[#202622] text-[#fbf7ef]">
+      <div class="mx-auto w-full max-w-7xl">
+        <div class="grid gap-12 lg:grid-cols-[.78fr_1.22fr]">
+          <div>
+            <p class="eyebrow mb-4 !text-[#e7a78e]">Concrete example</p>
+            <h2 class="display text-4xl leading-tight md:text-6xl">One feature slice, three files, six steps.</h2>
+            <p class="mt-6 text-lg leading-8 text-[#c9cec9]">
+              Imagine accepted specs require a new user-visible behavior. Broad planning may identify it as a
+              candidate slice, but it becomes formal work only after <span class="code text-base">create-task</span>
+              creates a task directory.
+            </p>
+            <div class="mt-8 rounded-2xl border border-white/15 bg-white/5 p-5">
+              <p class="code text-sm text-[#e7a78e]">agent/tasks/features/001-example-task/</p>
+              <p class="code mt-3 text-sm leading-7 text-[#d8cebd]">├── BRIEF.md<br>├── PLAN.md<br>└── PROGRESS.md</p>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+            <article class="rounded-3xl border border-white/15 bg-white/5 p-6 md:p-8">
+              <div class="flex items-center gap-4">
+                <span class="rounded-lg bg-[#a64f32] px-3 py-2 text-xs font-bold">BRIEF</span>
+                <h3 class="text-xl font-bold">What and why</h3>
+              </div>
+              <div class="mt-5 grid gap-3 text-sm text-[#c9cec9] sm:grid-cols-2">
+                <p>Spec sources and background</p>
+                <p>Task-local <span class="code">REQ-001</span></p>
+                <p>Observable <span class="code">AC-001</span></p>
+                <p>Non-goals, constraints, risks</p>
+              </div>
+            </article>
+
+            <article class="rounded-3xl border border-white/15 bg-white/5 p-6 md:p-8">
+              <div class="flex items-center gap-4">
+                <span class="rounded-lg bg-[#b58a36] px-3 py-2 text-xs font-bold">PLAN</span>
+                <h3 class="text-xl font-bold">How</h3>
+              </div>
+              <div class="mt-5 grid gap-3 text-sm text-[#c9cec9] sm:grid-cols-2">
+                <p>Codebase findings</p>
+                <p>Files and boundaries</p>
+                <p>Test and docs strategy</p>
+                <p>Approval status and decisions</p>
+              </div>
+            </article>
+
+            <article class="rounded-3xl border border-[#77a9a3] bg-[#256d68]/20 p-6 md:p-8">
+              <div class="flex items-center gap-4">
+                <span class="rounded-lg bg-[#256d68] px-3 py-2 text-xs font-bold">PROGRESS</span>
+                <h3 class="text-xl font-bold">Where and with what evidence</h3>
+              </div>
+              <div class="mt-5 grid gap-3 text-sm text-[#dcece8] sm:grid-cols-2">
+                <p>Current step and next action</p>
+                <p>Review decisions</p>
+                <p>Commands and results</p>
+                <p>REQ → AC → test → code → docs</p>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div class="mt-12 rounded-3xl bg-[#fbf7ef] p-6 text-[#202622] md:p-9">
+          <p class="text-xs font-bold uppercase tracking-wider text-[#256d68]">Traceability makes “done” inspectable</p>
+          <div class="mt-6 grid gap-3 text-sm md:grid-cols-5">
+            <div class="rounded-xl bg-[#f0dfd7] p-4"><strong>Requirement</strong><br><span class="code text-xs">REQ-001</span></div>
+            <div class="rounded-xl bg-[#f4ead8] p-4"><strong>Acceptance</strong><br><span class="code text-xs">AC-001</span></div>
+            <div class="rounded-xl bg-[#e5eee4] p-4"><strong>Proof</strong><br><span class="code text-xs">test/check</span></div>
+            <div class="rounded-xl bg-[#dcece8] p-4"><strong>Code</strong><br><span class="code text-xs">implementation</span></div>
+            <div class="rounded-xl bg-[#d7e6e3] p-4"><strong>Docs</strong><br><span class="code text-xs">path or N/A</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="mx-auto w-full max-w-7xl">
+        <p class="eyebrow mb-4">Skills are tools, not the operating system</p>
+        <h2 class="display max-w-5xl text-4xl leading-tight md:text-6xl">Use a skill when its bounded procedure matches the work.</h2>
+        <p class="mt-6 max-w-3xl text-lg leading-8 text-[#66706a]">
+          <span class="code text-base">CONTEXT.md</span> owns governing rules and routing.
+          A <span class="code text-base">SKILL.md</span> owns explicit triggers, ordered steps, guardrails, and output.
+          Formal task execution remains in <span class="code text-base">agent/tasks/CONTEXT.md</span>.
+        </p>
+
+        <div class="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#a64f32]">update-specs</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Change accepted product intent and preserve a complete spec snapshot.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#a64f32]">plan-feature-work</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Map a substantial spec area into ordered candidate slices, not tasks.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#a64f32]">create-task</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Create formal feature, issue-fix, or refactoring artifacts.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#256d68]">planning-audit</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Check spec coverage, stale tasks, implementation status, or conflicting task state.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#256d68]">drift-audit</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Diagnose disagreement among implemented behavior, proof, code, and docs.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#256d68]">docs-refinement</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Improve implemented-system documentation without changing behavior.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#8a681f]">clarify-with-shared-language</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Resolve one design question at a time using specs, language, decisions, and code.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#8a681f]">improve-codebase-architecture</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Find evidence-backed opportunities for deeper modules and better locality.</p>
+          </article>
+          <article class="card p-5">
+            <p class="code text-xs font-bold text-[#202622]">code-review</p>
+            <p class="mt-2 text-sm leading-6 text-[#66706a]">Run a structured second pass over a task diff during verification.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide bg-[#ebe1d1]">
+      <div class="mx-auto w-full max-w-7xl">
+        <div class="grid gap-12 lg:grid-cols-2">
+          <div>
+            <p class="eyebrow mb-4">Who decides what?</p>
+            <h2 class="display text-4xl leading-tight md:text-6xl">The agent has autonomy inside explicit boundaries.</h2>
+          </div>
+          <p class="self-end text-lg leading-8 text-[#66706a]">
+            The system is intentionally not “agent runs until done.” It is a collaboration where routine investigation
+            and verification move quickly, while product direction and consequential changes stay with the engineer.
+          </p>
+        </div>
+
+        <div class="mt-12 grid gap-6 lg:grid-cols-2">
+          <article class="rounded-3xl bg-[#202622] p-7 text-[#fbf7ef] md:p-9">
+            <p class="text-xs font-bold uppercase tracking-wider text-[#8fc3bc]">Agent</p>
+            <h3 class="mt-3 text-3xl font-bold">Investigates and executes</h3>
+            <ul class="mt-6 space-y-4 text-[#d8cebd]">
+              <li>Reads routed repository context</li>
+              <li>Challenges contradictions and unsafe plans</li>
+              <li>Edits within approved scope</li>
+              <li>Runs proportionate verification</li>
+              <li>Records progress, evidence, and residual risk</li>
+            </ul>
+          </article>
+
+          <article class="rounded-3xl bg-[#fbf7ef] p-7 md:p-9">
+            <p class="text-xs font-bold uppercase tracking-wider text-[#a64f32]">Engineer</p>
+            <h3 class="mt-3 text-3xl font-bold">Sets direction and approves</h3>
+            <ul class="mt-6 space-y-4 text-[#66706a]">
+              <li>Chooses product direction and tradeoffs</li>
+              <li>Resolves spec and task conflicts</li>
+              <li>Approves the implementation plan</li>
+              <li>Reviews checkpoints and the actual diff</li>
+              <li>Approves dependencies, migrations, APIs, and commits</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="start-using" class="slide">
+      <div class="mx-auto w-full max-w-7xl">
+        <div class="grid gap-12 lg:grid-cols-[.75fr_1.25fr]">
+          <div>
+            <p class="eyebrow mb-4">Your first session</p>
+            <h2 class="display text-4xl leading-tight md:text-6xl">Start with the route, not with a giant prompt.</h2>
+            <p class="mt-6 text-lg leading-8 text-[#66706a]">
+              The methodology becomes understandable through one small real task. Let the repository tell both you and
+              the agent where the work belongs.
+            </p>
+          </div>
+
+          <ol class="space-y-4">
+            <li class="card flex gap-5 p-5 md:p-6">
+              <span class="step-number">1</span>
+              <div>
+                <h3 class="font-bold">Read the project controls</h3>
+                <p class="mt-1 text-sm leading-6 text-[#66706a]"><span class="code">AGENTS.md</span>, then root <span class="code">CONTEXT.md</span>.</p>
+              </div>
+            </li>
+            <li class="card flex gap-5 p-5 md:p-6">
+              <span class="step-number">2</span>
+              <div>
+                <h3 class="font-bold">Check the active-task lock</h3>
+                <p class="mt-1 text-sm leading-6 text-[#66706a]">Read <span class="code">agent/tasks/CURRENT.md</span> before repository-changing work.</p>
+              </div>
+            </li>
+            <li class="card flex gap-5 p-5 md:p-6">
+              <span class="step-number">3</span>
+              <div>
+                <h3 class="font-bold">Choose the correct work route</h3>
+                <p class="mt-1 text-sm leading-6 text-[#66706a]">Planning, formal task execution, complementary skill, or an explicitly confirmed informal exception.</p>
+              </div>
+            </li>
+            <li class="card flex gap-5 p-5 md:p-6">
+              <span class="step-number">4</span>
+              <div>
+                <h3 class="font-bold">Use one small real task to learn</h3>
+                <p class="mt-1 text-sm leading-6 text-[#66706a]">Review its brief, plan, progress, tests, diff, documentation, and closure evidence.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+
+        <div class="mt-14 rounded-3xl bg-[#a64f32] p-7 text-white md:p-10">
+          <div class="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#f3d6cb]">Remember this</p>
+              <p class="display mt-3 text-3xl leading-tight md:text-5xl">
+                Intent in specs. Work in tasks. Reality in code, tests, and docs. Decisions with the engineer.
+              </p>
+            </div>
+            <a href="#start" class="inline-flex rounded-full border border-white/40 px-5 py-3 text-sm font-bold hover:bg-white hover:text-[#a64f32]">Back to the top ↑</a>
+          </div>
+        </div>
+
+        <footer class="mt-10 flex flex-col gap-3 border-t border-[#d8cebd] pt-6 text-xs text-[#66706a] sm:flex-row sm:items-center sm:justify-between">
+          <p>Source: <span class="code">Methodology/agentic-dev-methodology.md</span> and <span class="code">Methodology/scaffold/</span></p>
+          <p>Canonical rules remain in the source files.</p>
+        </footer>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
