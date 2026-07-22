@@ -2,7 +2,9 @@
 
 This refers to `PRD-2.md` from kanbando, see that one for the full PRD.
 
-Runs were performed in the interval **Jun 20 2026 - Jun 21 2026**.
+Runs were performed in the interval **Jun 26 2026 - Jun 27 2026** (approximate; not
+git-tracked at the time — dates were recorded in `.devnotes`, not committed alongside
+this document).
 
 ### PRD Solution Section
 Deliver the full lifecycle of a **personal todo** (a todo with no candidates,
