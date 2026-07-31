@@ -26,6 +26,8 @@ Across the evaluations, splitting this tightly coupled vertical slice into five 
 
 The most important process finding is that **neither self-review nor subagent review can be treated as a substitute for mandatory end-to-end acceptance testing**. Run 1 retained a bug after review, while Run 3 explicitly skipped a required persistence test.
 
+A takeaway that's more difficult to express quantitatively, but weighs a lot for me personally: if UI quality & feel is a priority, Anthropic models with Claude Code top GPT models with Codex; if logical completeness & accuracy is the priority, Codex and GPTs are the stronger choice.
+
 ---
 
 ## Actionable Takeaways
