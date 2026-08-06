@@ -82,6 +82,12 @@ https://github.com/dvinubius/agentive-skills (fork)
 
 https://agentivestack.ai/build
 
+### Hodik (Irreplaceable Engineer Lab)
+
+Low overhead, high leverage, requires good engineering judgement and HITL.
+
+See `research/hodik-irreplaceable`
+
 
 ## Deprecated
 
