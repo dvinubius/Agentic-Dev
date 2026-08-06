@@ -4,6 +4,8 @@
 
 ### Spartan
 
+**Status: methodology draft; not ready for use.**
+
 Absolutely minimal. No formal workflow, no PRD. 
 
 Just `AGENTS.md` w/ rules & minimal routing, and local `skills/`
@@ -17,15 +19,7 @@ Designed for
 
 The best to combine with [`openspec`](https://github.com/Fission-AI/openspec).
 
-Packaged variant: [3-Layer-Spartan](3-Layer-Spartan/3-layer-spartan-methodology.md) — uses 3-layer planning specs (normative `specs/`) instead of `openspec`, plus `tdd`, `deepen-modules`, `neatify-code`.
-
-### Ultra Lean
-
-Works with a PRD and issues derived from it. 
-The engineer is always involved in planning (intent clarification, alignment, research, PRD creation)
-The engineer orchestrates agents manually — one issue per session. 
-A capable agent with a PRD and issues will naturally handle orchestration (sub-tasks, reviews) without explicit instructions.
-Optional AFK prd execution based on skill.
+See the [Spartan SDD concept](Spartan-SDD/concept.md).
 
 ### Matt Pocock
 
@@ -53,11 +47,11 @@ Includes parallelizable AFK execution of implementations. (ralph loops)
 
 ### Methodology Compatibility Table
  
-| Scenario | Spartan | Ultra Lean | Matt Pocock |
-|---|---|---|---|
-| **Fully AFK** | ✅ Best fit | ⚠️ Possible with engineer waiving all reviews, risky for large PRDs | ⚠️ HITL planning & final review required |
-| **Planning & Final Review** (PRD approved, then AFK) | ✅ Ad-hoc PRD or `openspec` format | ✅ Good fit (single orchestrating agent + good prompt) | ⚠️ Risky for large PRDs |
-| **Human in the loop throughout** | ✅ Ideal for experiments | ✅ Great fit (engineer orchestrates per-issue sessions) | ✅ Great fit |
+| Scenario | Spartan | Matt Pocock |
+|---|---|---|
+| **Fully AFK** | ✅ Best fit | ⚠️ HITL planning & final review required |
+| **Planning & Final Review** (PRD approved, then AFK) | ✅ Ad-hoc PRD or `openspec` format | ⚠️ Risky for large PRDs |
+| **Human in the loop throughout** | ✅ Ideal for experiments | ✅ Great fit |
 
 
 ## Other Methodologies - In Research
@@ -73,7 +67,7 @@ See `../research/workflow-tools.md`
 
 ### QRSPI
 
-"Crispy" - see `../Agentic-Methodologies/Crispy-Methodology/concept.md`
+"Crispy" - see [the QRSPI research notes](../research/QRSPI-Methodology/concept.md).
 
 
 ### HAK - Agentive Stack
@@ -88,6 +82,15 @@ https://github.com/dvinubius/agentive-skills (fork)
 
 https://agentivestack.ai/build
 
+
+## Deprecated
+
+**Ultra Lean**
+
+Deprecated because it overlaps too heavily with the highly effective Matt
+Pocock workflow. The methodology is retained in
+[`deprecated/Ultra-Lean-Methodology/`](deprecated/Ultra-Lean-Methodology/) for
+historical comparison.
 
 ## Excluded
 

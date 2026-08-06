@@ -66,7 +66,9 @@ notes rather than hidden behind a single definitive claim.
 | --- | --- |
 | [`research/`](research/) | Notes, comparisons, experiments, terminology, workflow observations, and takeaways. Start with [models and harnesses](research/models-and-harnesses-takeaways.md), [workflow tools](research/workflow-tools.md), and [workflow takeaways](research/workflow-TAKEAWAYS.md). |
 | [`Agentic-Methodologies/`](Agentic-Methodologies/) | Evolving methodology concepts and reusable scaffolds. See the [methodologies overview](Agentic-Methodologies/methodologies-overview.md). |
-| [`Agentic-Methodologies/Ultra-Lean-Methodology/`](Agentic-Methodologies/Ultra-Lean-Methodology/) | The most developed current methodology: a developer-steered workflow using a short-lived PRD, optional issues, durable decisions, and review. |
+| [`Agentic-Methodologies/Spartan-SDD/`](Agentic-Methodologies/Spartan-SDD/) | A newly promoted methodology draft for minimal agent guidance and specification-driven development. It is still a work in progress and is not ready for use. |
+| [`Universal-Benchmark/`](Universal-Benchmark/) | Work in progress on a universal benchmark for comparing coding models across project scenarios and execution styles. |
+| [`research/QRSPI-Methodology/`](research/QRSPI-Methodology/) | Research notes on the QRSPI workflow for planning and delivering complex brownfield changes. |
 | [`UI-design/`](UI-design/) | Research into agentic UI and design-to-implementation workflows, including paths with and without Figma. |
 | [`Agentic-Methodologies/deprecated/`](Agentic-Methodologies/deprecated/) | Earlier approaches retained for comparison and historical context. They are not current recommendations. |
 
@@ -78,10 +80,12 @@ proportionate workflows**: make intent explicit, give agents bounded work and
 useful context, retain human decisions at consequential points, and verify the
 result against the intended behavior.
 
-For a concrete expression of that direction, see the [Ultra Lean Agentic
-Development Methodology](Agentic-Methodologies/Ultra-Lean-Methodology/ultra-lean-agentic-dev-methodology.md).
-Its scaffold is intended as a research artifact and starting point for further
-experimentation, not a drop-in standard.
+The [Spartan SDD methodology](Agentic-Methodologies/Spartan-SDD/concept.md) is
+the newest draft in this direction, but it is not ready for use. Ultra Lean has
+been deprecated because it overlaps too heavily with the highly effective
+[Matt Pocock workflow](Agentic-Methodologies/Matt-Pocock-Methodology/concept),
+and is retained under `Agentic-Methodologies/deprecated/` for historical
+comparison.
 
 ## How to read this repository
 
