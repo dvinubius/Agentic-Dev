@@ -71,7 +71,7 @@ notes rather than hidden behind a single definitive claim.
 | [`research/QRSPI-Methodology/`](research/QRSPI-Methodology/) | Research notes on the QRSPI workflow for planning and delivering complex brownfield changes. |
 | [`UI-design/`](UI-design/) | Research into agentic UI and design-to-implementation workflows, including paths with and without Figma. |
 | [`skills/`](skills/) | Reusable coding-agent skills, scripts, and reference material. See [Skills](#skills). |
-| [`explainers/`](explainers/) | Visual explainers in HTML and PDF, including earlier PDF exports. See [Explainers](#explainers). |
+| [`explainers/`](explainers/) | Visual explainers in HTML and PDF. See [Explainers](#explainers). |
 | [`Agentic-Methodologies/deprecated/`](Agentic-Methodologies/deprecated/) | Earlier approaches retained for comparison and historical context. They are not current recommendations. |
 
 ## Skills
@@ -109,11 +109,6 @@ The visual explainers are available as HTML and PDF:
 | Agent loop | [Read](explainers/agent-loop.html) | [Download](explainers/agent-loop.pdf) |
 | Cognitive surrender | [Read](explainers/cognitive-surrender.html) | [Download](explainers/cognitive-surrender.pdf) |
 | Context management | [Read](explainers/context-management-system.html) | [Download](explainers/context-management-system.pdf) |
-
-Earlier PDF exports are preserved alongside the current ones as
-[`agent-loop-2026-08-01.pdf`](explainers/agent-loop-2026-08-01.pdf),
-[`cognitive-surrender-2026-08-01.pdf`](explainers/cognitive-surrender-2026-08-01.pdf),
-and [`context-management-system-2026-08-01.pdf`](explainers/context-management-system-2026-08-01.pdf).
 
 ## Methodology direction
 
