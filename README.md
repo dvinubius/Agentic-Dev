@@ -65,8 +65,8 @@ notes rather than hidden behind a single definitive claim.
 | Area | What it contains |
 | --- | --- |
 | [`research/`](research/) | Notes, comparisons, experiments, terminology, workflow observations, and takeaways. Start with [models and harnesses](research/models-and-harnesses-takeaways.md), [workflow tools](research/workflow-tools.md), and [workflow takeaways](research/workflow-TAKEAWAYS.md). |
-| [`Agentic-Methodologies/`](Agentic-Methodologies/) | Evolving methodology concepts and reusable scaffolds. See the [methodologies overview](Agentic-Methodologies/methodologies-overview.md). |
-| [`Agentic-Methodologies/Spartan-SDD/`](Agentic-Methodologies/Spartan-SDD/) | A newly promoted methodology draft for minimal agent guidance and specification-driven development. It is still a work in progress and is not ready for use. |
+| [`Agentic-Methodologies/`](Agentic-Methodologies/) | Notes on Matt Pocock's actively maintained approach and historical alternatives. See the [methodologies overview](Agentic-Methodologies/methodologies-overview.md). |
+| [`Agentic-Methodologies/Matt-Pocock-Methodology/`](Agentic-Methodologies/Matt-Pocock-Methodology/concept/) | Working notes on the reasons behind the approach's spec, documentation, and TDD choices. |
 | [`Universal-Benchmark/`](Universal-Benchmark/) | Work in progress on a universal benchmark for comparing coding models across project scenarios and execution styles. |
 | [`research/QRSPI-Methodology/`](research/QRSPI-Methodology/) | Research notes on the QRSPI workflow for planning and delivering complex brownfield changes. |
 | [`UI-design/`](UI-design/) | Research into agentic UI and design-to-implementation workflows, including paths with and without Figma. |
@@ -90,10 +90,7 @@ references remain beside their respective skills.
 | [`no-bs-opus-explicit`](skills/no-bs-opus-explicit/SKILL.md) | Apply the original, more explicit version of that style. |
 | [`reflow-markdown`](skills/reflow-markdown/SKILL.md) | Rewrap Markdown prose without changing its words or structure. |
 | [`socrates`](skills/socrates/SKILL.md) | Guide reasoning with targeted questions and graduated hints. |
-| [`to-my-specs`](skills/to-my-specs/SKILL.md) | Turn confirmed product intent into `.devnotes/specs` documentation. |
 | [`validate-markdown-repo`](skills/validate-markdown-repo/SKILL.md) | Check local Markdown links, skill frontmatter, and template pairs. |
-| [`web-app-arsenal`](skills/web-app-arsenal/SKILL.md) | Compare web application tools against a project's needs. |
-| [`writing-great-skills`](skills/writing-great-skills/SKILL.md) | Write, audit, and test agent skills. |
 
 Check this README, the attribution notice, and the skill documentation from
 the repository root with
@@ -120,18 +117,19 @@ and [`context-management-system-2026-08-01.pdf`](explainers/context-management-s
 
 ## Methodology direction
 
-The methodology work explores several levels of structure rather than a single
-prescriptive process. The current direction favors **developer-steered,
-proportionate workflows**: make intent explicit, give agents bounded work and
-useful context, retain human decisions at consequential points, and verify the
-result against the intended behavior.
+Matt Pocock's approach is the only methodology here I currently find viable
+for ongoing use. I use it mostly as Matt maintains it. The
+[workflow notes](Agentic-Methodologies/Matt-Pocock-Methodology/concept/matt-pocock-workflow.md)
+remain here to explain why some choices have proved useful in my work and to
+make less obvious decisions about specs, documentation, and TDD explicit.
+They are an interpretation and record of practical experience, not a local
+replacement for Matt's maintained skills.
 
-The [Spartan SDD methodology](Agentic-Methodologies/Spartan-SDD/concept.md) is
-the newest draft in this direction, but it is not ready for use. Ultra Lean has
-been deprecated because it overlaps too heavily with the highly effective
-[Matt Pocock workflow](Agentic-Methodologies/Matt-Pocock-Methodology/concept),
-and is retained under `Agentic-Methodologies/deprecated/` for historical
-comparison.
+[Spartan SDD](Agentic-Methodologies/deprecated/Spartan-SDD/concept.md) is
+deprecated because it is no longer worth maintaining. Ultra Lean and other
+earlier approaches are also retained under
+[`Agentic-Methodologies/deprecated/`](Agentic-Methodologies/deprecated/)
+for historical context, not as current recommendations.
 
 ## How to read this repository
 

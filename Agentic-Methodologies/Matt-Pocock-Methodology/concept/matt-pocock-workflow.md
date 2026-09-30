@@ -1,6 +1,49 @@
 # Matt Pocock Workflow
 
-A workflow for the strategic engineer, with HITL during planning and the option to have AFT execution of issues.
+Working notes on Matt Pocock's approach, which I use mostly as he
+maintains it. The purpose of keeping a methodology here is to explain why its
+choices have mattered in my work, including choices about specs, docs, and TDD
+that are easy to overlook. This file is an interpretation and historical record;
+Matt's maintained skills are the source for the current commands and workflow.
+
+The approach centers developer involvement in planning and review, with the
+option to delegate implementation of well-defined tasks.
+
+## Why these choices matter
+
+### Spec: an agreed build artifact
+
+The spec is broader than a product-only PRD. It can carry intent, observable
+behavior, scope, implementation decisions, and testing decisions together.
+That mix helps a later implementation session understand both the desired
+result and the constraints behind it. The spec is a concise handoff for the
+work at hand, not an attempt to fully describe the whole system in advance.
+For smaller work, the alignment may fit in one conversation; larger or unclear
+work can need several sessions, research, or a prototype before a spec is useful.
+
+### Docs: preserve context the code cannot explain
+
+The code is the authority for current behavior. A small shared-language
+document helps the engineer and agent use the same terms; decision records
+retain the reasons behind lasting, surprising trade-offs. I find those reasons
+useful when work resumes in a new session. Docs should earn their maintenance
+cost, so I favor updating them when understanding changes over building a large
+parallel description of the code.
+
+### TDD: shorten the feedback loop
+
+Tests written as implementation proceeds can expose misunderstandings early
+and give an agent quick evidence that a slice works. That is the practical
+reason for TDD here. I do not treat test-first order as a rule for every task:
+verification should fit the behavior and risk, and acceptance tests based on
+agreed criteria can also provide useful proof. Tests that merely mirror the
+implementation do not provide that proof.
+
+## Earlier workflow notes
+
+The notes below retain command names and terminology from different stages of
+the approach's evolution (including PRD and issue names). Consult Matt's
+maintained skills for the current names and steps.
 
 Work is organized in "tasks", which correspond to issues, all under one "spec" (formerly PRD).
 

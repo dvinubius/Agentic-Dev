@@ -2,3 +2,5 @@
 .devnotes/
 .DS_Store
 research/case-study-prd2-kanbando
+
+explainers/*.html

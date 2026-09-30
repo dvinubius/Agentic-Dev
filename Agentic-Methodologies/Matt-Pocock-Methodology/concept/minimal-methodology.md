@@ -1,6 +1,9 @@
 # Minimal Methodology
 
-Workflow for a strategic dev. 
+Earlier notes on Matt Pocock's workflow for a strategic developer. Skill names
+and setup steps below may have changed; use Matt's maintained skills for the
+current workflow. See the [workflow notes](matt-pocock-workflow.md) for my
+reasoning about specs, docs, and TDD.
 
 Within 1 session, issues are created. Potentially GH integrated.
 
