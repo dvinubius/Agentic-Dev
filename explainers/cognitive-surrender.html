@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The line between offloading and surrender</title>
+
+<!-- Space Grotesk 400/500/700 + Azeret Mono 400/500. Fallbacks are pinned in --sans / --mono
+     so that whatever does fall back renders the same everywhere. -->
+<style>
+/* The brand's own subsets, not the Google-hosted builds — Google's subset ranges exclude
+   U+2190-21FF and U+2713, so `→`, `↳` and `✓` fall back to a system font from files that
+   demonstrably contain them. Built by common/scripts/build-webfonts.py; `↳` and `✓` exist
+   in neither family upstream and are composed per family. Keep the ranges in step with
+   design-system/assets/fonts.css. */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   Cognitive surrender — explainer, Dinu Barbu design system.
+   :root copied from skills/explain-visually/tokens.css; unused tokens dropped.
+   Every figure's step-3 encoding table sits as a comment above its CSS.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Neutrals */
+  --ink:#141414;
+  --paper:#FAFAFA;
+  --stone:#6E6E6E;
+  --muted-on-dark:#9A9A9A;
+  --hairline:#E6E6E6;
+  --shade:#F0F0F0;
+  --inline-code:#EDEDED;
+
+  /* Accent — one colour at two lightnesses. Ember on light, Ember Light on dark. Never reversed. */
+  --ember:#A8500F;
+  --ember-light:#DE8A42;
+  --ember-hover:#8A420C;
+  /* Derived tints are alphas of the accent, never flat hexes, so an accent change propagates */
+  --ember-wash:color-mix(in srgb, var(--ember) 10%, transparent);
+
+  /* Diagram neutrals — marks and connectors only, never text */
+  --mark:#DCDCDC;
+  --mark-strong:#C4C4C4;
+
+  --sans:'Space Grotesk','Helvetica Neue',sans-serif;
+  --mono:'Azeret Mono','Menlo',monospace;
+
+  --track-heading:-0.022em;
+  --track-wordmark:-0.018em;
+  --mono-scale:0.93;
+
+  /* Measure — ONE edge for the whole document, set on the section. Never in ch. */
+  --edge:39rem;                        /* 624px — ~74 characters at 17px */
+  --edge-wide:calc(var(--edge) * 1.5); /* 936px — opt-in breakout, figures only */
+  --edge-break:calc((var(--edge) - var(--edge-wide)) / 2);
+  --measure-mono:48em;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:17px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  padding:0 56px 80px;
+}
+/* The outer track only has to be wide enough for the breakout. */
+.wrap{max-width:calc(var(--edge-wide) + 112px);margin:0 auto}
+
+/* ─── the one edge ─────────────────────────────────────────────────────────
+   Capped once, here. Prose, headings, figures, captions and the section
+   hairlines all inherit it, so nothing drifts out of line. Only figure.wide
+   may differ. Note: no `margin` shorthand anywhere below — a shorthand would
+   silently overwrite margin-left:auto and produce a second right edge. */
+.masthead,section,.colophon{
+  max-width:var(--edge);
+  margin-left:auto;
+  margin-right:auto;
+}
+
+/* ─── type ─────────────────────────────────────────────────────────────── */
+
+/* Mono meta labels are lowercase per the brand ("02 / colour"), and Stone rather than
+   Ember: an Ember eyebrow would spend the section's accent moment before its figure gets to. */
+.eyebrow{
+  font-family:var(--mono);
+  font-size:11.5px;      /* mono runs at --mono-scale of nominal */
+  font-weight:500;
+  letter-spacing:.16em;
+  color:var(--stone);
+}
+
+/* Headings wrap on the measure — no <br>, ever. A hard break is a layout decision
+   frozen at one viewport width, and it survives into every other one. */
+h1{
+  font-size:clamp(34px,6vw,50px);
+  line-height:1.06;
+  font-weight:500;
+  letter-spacing:var(--track-heading);
+  margin-top:24px;
+}
+h2{
+  font-size:clamp(25px,4vw,34px);
+  line-height:1.15;
+  font-weight:500;
+  letter-spacing:var(--track-heading);
+  margin-top:14px;
+}
+h3{font-size:17.5px;line-height:1.3;font-weight:500;letter-spacing:-.018em}
+
+/* Justified at ~55 characters or more; never hyphenated, so no word is split across
+   lines — which is what makes the measure cap load-bearing rather than cosmetic. */
+p{
+  font-size:17px;line-height:1.62;color:var(--stone);
+  text-align:justify;hyphens:none;-webkit-hyphens:none;
+}
+p + p{margin-top:15px}
+p strong{color:var(--ink);font-weight:500}
+/* Space Grotesk has no true italic — emphasis is weight or accent, never a synthesised slant */
+p em,span em{font-style:normal;font-weight:500;color:var(--ink)}
+.lede{font-size:18.5px;line-height:1.55}
+code{font-family:var(--mono);font-size:.89em;background:var(--inline-code);padding:1px 5px;color:var(--ink)}
+
+.dot{color:var(--ember)}
+
+/* ─── masthead, sections, colophon ─────────────────────────────────────── */
+
+.masthead{padding:76px 0 40px}
+.wordmark{font-size:17px;font-weight:500;letter-spacing:var(--track-wordmark)}
+.wordmark b{color:var(--ember);font-weight:700}
+.masthead .deck{margin-top:24px;font-size:18.5px;line-height:1.55}
+.masthead .credit{
+  margin-top:30px;font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--stone);
+  max-width:var(--measure-mono);
+}
+
+section{padding:58px 0 0;border-top:1px solid var(--hairline);margin-top:58px}
+/* Between sections the rule gets air on both sides. Under the masthead it does not: the
+   frontmatter's own padding is the whole gap, or the credit floats away from the piece. */
+.masthead + section{margin-top:0}
+section > .lede{margin-top:18px}
+
+/* ─── figures ──────────────────────────────────────────────────────────────
+   The frame means figure. The diagram content sits on --paper with an inset and a
+   1px --mark-strong frame; the label and caption stay outside it. A figure given no
+   ground of its own is not an object, only a stack of rows — and a --shade row
+   separates from the page at 1.09:1 while an --ink row inside it separates at
+   17.65:1, so without the frame the top of a figure reads as part of the paragraph
+   above it. Mark Strong (1.67:1), not --hairline (1.20:1 on paper), which would
+   disappear against the very panel it is meant to outline. */
+figure{margin-top:40px}
+.fig-label{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--stone);
+  margin-bottom:14px;
+}
+.fig-body{background:var(--paper);border:1px solid var(--mark-strong);padding:26px}
+figcaption{
+  /* 16px, not 15.5: at 15.5 the longest caption measures 85 characters on the 624px
+     column — exactly the ceiling. A caption is running text and gets the same headroom
+     the body copy has. */
+  margin-top:15px;font-size:16px;line-height:1.52;color:var(--stone);
+  text-align:justify;hyphens:none;-webkit-hyphens:none;
+}
+figcaption b{color:var(--ink);font-weight:500}
+
+/* The opt-in breakout. Below --edge-wide plus the track's padding those negative
+   margins would push the figure off both sides of the page — see the guard at the
+   foot of this sheet, which returns a wide figure to the reading column. */
+figure.wide{
+  width:var(--edge-wide);
+  margin-left:var(--edge-break);
+  margin-right:var(--edge-break);
+}
+/* Only the framed diagram breaks out. The figure's own label and caption are running
+   text, so they stay capped at --edge and centred on the same axis as everything else —
+   which puts them back on the document's single edge instead of hanging off to the left. */
+figure.wide .fig-label,figure.wide figcaption,figure.wide .note{
+  max-width:var(--edge);margin-left:auto;margin-right:auto;
+}
+
+svg{display:block;width:100%;height:auto;overflow:visible}
+/* The stacked variants are capped and centred so they render near 1:1 at 375px and only
+   modestly upscaled in the 624px reading column. The cap is per-viewBox, not shared: an SVG
+   scales as one piece, so the point where the TEXT starts shrinking is set by how many units
+   the drawing spends. Trimming dead width out of the viewBox buys back exactly that much
+   room before the whole figure has to scale — which is why fig 1, whose boxes were half
+   whitespace, is drawn at 300 units and capped lower to render at the same scale. */
+.svg-tall{display:none;max-width:420px;margin-left:auto;margin-right:auto}
+.svg-tall.n300{max-width:372px}   /* 372/300 = 420/340 — same scale, 40px later shrink */
+
+/* ─── callouts ─────────────────────────────────────────────────────────────
+   A callout is not a figure, and is never framed — it carries its accent rule
+   instead. Two boundary treatments meaning two different things is the point:
+   the frame stays a reliable signal that what it encloses is a figure. */
+.callout{background:var(--shade);padding:26px 28px;border-left:3px solid var(--ink);margin-top:36px}
+.callout.accent{border-left-color:var(--ember)}   /* the section's one accent moment */
+.callout .q{font-size:20px;line-height:1.4;font-weight:500;letter-spacing:-.015em;color:var(--ink)}
+.callout p{margin-top:13px;font-size:16px}
+
+/* ─── cards (section 04 — no figure, deliberately) ─────────────────────── */
+
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:34px}
+.card{background:var(--shade);padding:22px 24px 24px}
+.card .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--stone)}
+.card h3{margin-top:10px}
+.card p{margin-top:9px;font-size:15px;line-height:1.5;text-align:left}
+
+/* ─── the moves list (section 07 content, not a figure) ────────────────── */
+
+.moves{display:grid;grid-template-columns:1fr 1fr;gap:0 34px;margin-top:34px;
+  border-top:1px solid var(--hairline)}
+.move{padding:20px 0;border-bottom:1px solid var(--hairline)}
+.move .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--stone)}
+.move h3{margin-top:8px}
+.move p{margin-top:7px;font-size:15px;line-height:1.5;text-align:left}
+
+/* ══ fig 1 — same output, two acts ═════════════════════════════════════════
+   Encoding — what each colour claims:
+     Ink block               = the model's answer — identical on both tracks; not the variable
+     Shade block             = a step in your own process
+     Ember rule (4px)        = you — the one step the offloading track performs
+     Dashed hairline outline = that same step's absence on the surrender track
+     Ink arrows/heads        = flow (structure, not neutral fill)
+     Flow arrow              = the single pass through the track. Ink for the short hops
+                               between adjacent horizontal boxes; Mark Strong for the one long
+                               run beside the stacked column, which is a connector to be
+                               followed rather than a hop, and at Ink out-weighed the blocks
+   Neutral by default: the tracks differ by which blocks exist, not by hue. Accent spent once.
+   Holds when stacked: the vertical variant keeps the same four roles in the same order,
+   so the sequence it asserts is the one the horizontal variant already asserted.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.f-shade{fill:var(--shade)}
+.f-ink{fill:var(--ink)}
+.f-rule{fill:var(--ember)}
+.f-rule-dark{fill:var(--ember-light)}   /* pair rule: Ember Light is the on-Ink accent */
+.s-flow{stroke:var(--ink);stroke-width:1.5;fill:none}
+.h-flow{fill:var(--ink)}
+.s-slot{stroke:var(--hairline);stroke-width:1.5;fill:none;stroke-dasharray:6 5}
+.s-leader{stroke:var(--mark-strong);stroke-width:1.5;fill:none}
+.h-leader{fill:var(--mark-strong)}
+.s-div{stroke:var(--hairline);stroke-width:1}
+
+.t-role{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;fill:var(--stone)}
+.t-role-dark{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;fill:var(--muted-on-dark)}
+.t-title{font-family:var(--sans);font-size:14.5px;font-weight:500;letter-spacing:-.015em;fill:var(--ink)}
+.t-title-dark{font-family:var(--sans);font-size:14.5px;font-weight:500;letter-spacing:-.015em;fill:var(--paper)}
+.t-sub{font-family:var(--sans);font-size:12.5px;fill:var(--stone)}
+.t-sub-dark{font-family:var(--sans);font-size:12.5px;fill:var(--muted-on-dark)}
+.t-track{font-family:var(--mono);font-size:11px;letter-spacing:.14em;fill:var(--stone)}
+/* The stacked variants run one notch down the scale. They are drawn at 340 units and
+   render around 1:1 at 375px, so the wide figures' sizes come out optically larger there;
+   this also buys the room the long flow arrow and the verbose track titles need. */
+.svg-tall .t-role,.svg-tall .t-role-dark{font-size:9.5px;letter-spacing:.12em}
+.svg-tall .t-title,.svg-tall .t-title-dark{font-size:13px}
+.svg-tall .t-sub,.svg-tall .t-sub-dark{font-size:11.5px}
+.svg-tall .t-track,.svg-tall .t-lead{font-size:9.5px;letter-spacing:.1em}
+.svg-tall .t-note{font-size:11.5px}
+
+/* ══ fig 2 — what the Wharton numbers say ═════════════════════════════════
+   Encoding — what each colour claims:
+     Shade track       = all trials in the condition (the 100% each bar sits in)
+     Mark fill         = the measured share
+     Ember rule + wash = the one row the figure is about: 73% of wrong answers accepted.
+                         Salience, not valence — the prose carries that it is the bad number.
+   Neutral by default: "half the answers were wrong by design" is plain Mark. Spent once.
+
+   ══ fig 6 — surrender scales with size ═══════════════════════════════════
+   Same primitives, own encoding:
+     Shade track       = the 600-line span every bar is measured against
+     Mark bar          = the size of the change, drawn to scale
+     Ember rule + wash = the ~100-line norm — the threshold the figure is about
+   ════════════════════════════════════════════════════════════════════════ */
+
+.bars{display:flex;flex-direction:column;gap:4px}
+.bar-row{padding:14px 16px}
+.bar-row.accent{background:var(--ember-wash);border-left:3px solid var(--ember);padding-left:13px}
+/* No wrap: the value is the row's readout and has to stay on the baseline of the label's
+   first line. Wrapping drops it under a two-line label, where it reads as a third fact. */
+.bar-head{display:flex;gap:16px;justify-content:space-between;align-items:baseline}
+.bar-head .l{flex:1;font-size:15.5px;font-weight:500;letter-spacing:-.01em}
+.bar-head .v{flex:none;white-space:nowrap;font-family:var(--mono);font-size:13px;color:var(--stone)}
+.bar-row.accent .bar-head .v{color:var(--ember)}
+.track{position:relative;height:22px;background:var(--shade);margin-top:11px}
+.fill{height:100%;background:var(--mark)}
+.bar-row .note{margin-top:9px;font-size:15px;line-height:1.5;color:var(--stone);text-align:left}
+.stat-strip{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--stone);
+  padding-bottom:15px;border-bottom:1px solid var(--hairline);margin-bottom:15px;
+}
+
+/* ══ fig 3 — four places it happens ═══════════════════════════════════════
+   Encoding: no colour. The four sites are peers, and the figure's claim is that the
+   thread running through them is the same — a hue on any one would contradict the point.
+     Shade band = header · Hairline = row rules · Stone = the "what you skipped" column
+   Accent spent zero times, deliberately.
+
+   ══ fig 5 — five checks ══════════════════════════════════════════════════
+   Encoding: no colour. The five heuristics are peers; ranking them with a hue would
+   assert an order the source does not. Mono numerals in Stone carry position only.
+   The section's accent moment is the Ember rule on the calibration callout above it.
+   Both hold when stacked: the header row drops out and each cell keeps its own mono
+   key, so the column a value belonged to is still recoverable without the header.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.tbl .head{
+  display:flex;gap:20px;background:var(--shade);padding:12px 18px;
+  border-bottom:1px solid var(--hairline);
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--stone);
+}
+.tbl .head .a{flex:1.05}
+.tbl .head .b{flex:1}
+.tbl .row{display:flex;gap:20px;padding:18px;border-bottom:1px solid var(--hairline)}
+.tbl .row:last-child{border-bottom:0}
+.tbl .row .n{
+  font-family:var(--mono);font-size:13px;color:var(--stone);width:22px;flex:none;padding-top:3px;
+}
+.tbl .row .a{flex:1.05}
+.tbl .row .b{flex:1}
+.tbl .row .t{display:block;font-size:15.5px;font-weight:500;letter-spacing:-.012em}
+.tbl .row .d{display:block;font-size:14.5px;line-height:1.5;color:var(--stone);margin-top:6px}
+.tbl .row .b .k{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--stone);display:block;
+}
+.tbl .row .b .s{font-size:14.5px;line-height:1.5;color:var(--stone);margin-top:7px;display:block}
+/* Inside the frame the table needs no border of its own — the frame is the boundary. */
+.fig-body.flush{padding:0}
+
+/* fig 5 only: every row's second column answers the same header question, so a per-cell key
+   would repeat the header verbatim five times. The key stays in the markup and surfaces only
+   where the header is hidden — the stacked layout, which has no other cue for which column a
+   cell belongs to. fig 3's keys are NOT this: each names a different thing that got skipped. */
+.tbl.keyless .row .b .k{display:none}
+
+/* ══ fig 4 — the loan and the bill ════════════════════════════════════════
+   Encoding — what each colour claims:
+     Shade block         = one act of surrender, a tiny loan; the three differ by position
+     Mark Strong rule    = the leader gathering the three into "they compound" — a bracket
+                           under the horizontal row, an L down the left and under the stacked
+                           column (Hairline is calibrated for a divider and disappears here)
+     Ink block           = the bill — something breaks and nobody can reconstruct the system
+     Ember Light rule    = the interest, on the Ink block (pair rule: Ember Light on dark)
+   Accent spent once.
+
+   ══ fig 7 — two loops ════════════════════════════════════════════════════
+     Shade block             = you, and what you produce
+     Ink block               = the model, and what it produces
+     Ember rule (4px)        = the block that exists only in the cooperation loop
+     Dashed hairline outline = that block's absence in the delegation loop
+     Dashed hairline path    = the return edge that never closes there — no arrowhead, and
+                               it stops short of the block it would have to reach
+   Neutral by default: both panels use the same two role fills; only the return differs.
+   Accent spent once across both panels. When the two panels stack, they are still two
+   panels — each keeps its own frame and its own closing note, so the comparison holds.
+   ════════════════════════════════════════════════════════════════════════ */
+
+.s-panel{stroke:var(--hairline);stroke-width:1;fill:none}
+.t-note{font-family:var(--sans);font-size:12.5px;fill:var(--stone)}
+.t-lead{font-family:var(--mono);font-size:11px;letter-spacing:.1em;fill:var(--stone)}
+
+/* ─── colophon ─────────────────────────────────────────────────────────── */
+
+/* Two fixed lines — identity, then signature — and, only when the piece cites something,
+   the sources below them. Sources live here and nowhere else: the frontmatter carries no
+   attribution, so a reader looking for where this came from has exactly one place to look. */
+.colophon{
+  padding-top:26px;border-top:1px solid var(--hairline);margin-top:66px;
+  font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--stone);
+}
+.colophon b{color:var(--ember);font-weight:400}
+/* One line per source, so the list reads the same at one entry as at five — the label
+   carries the "source:" job that would otherwise have to repeat on every row.
+   The rule above it is the colophon's own hairline cut to 48px. Full width it would be a
+   second divider, and the colophon is not two documents; at 8% of the column it reads as
+   a tick marking a sub-block, which is the rank attribution actually has here. */
+.refs{margin-top:26px;padding-top:26px;display:flex;flex-direction:column;
+      align-items:flex-start;gap:6px;position:relative}
+.refs::before{content:"";position:absolute;top:0;left:0;width:48px;
+              border-top:1px solid var(--hairline)}
+.refs-label{letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+/* Brand link: ink text, 1px ember bottom border, trailing →. Never underlined. */
+.qlink{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ember);padding-bottom:1px}
+.qlink:hover{color:var(--ember-hover);border-bottom-color:var(--ember-hover)}
+
+/* ─── the breakout guard ───────────────────────────────────────────────────
+   Below --edge-wide plus the track's padding, figure.wide's negative margins push
+   the figure off both sides of the page. Under that threshold it returns to the
+   reading column — and the horizontal SVGs return to their stacked variants with it,
+   so nothing is scaled down past legibility. */
+@media (max-width:1080px){
+  figure.wide{width:auto;max-width:100%;margin-left:0;margin-right:0}
+  .svg-wide{display:none}
+  .svg-tall{display:block}
+}
+
+@media (max-width:760px){
+  body{padding:0 22px 60px;font-size:16px}
+  .masthead{padding:52px 0 42px}
+  .masthead .deck,.lede{font-size:17px}
+  section{padding:46px 0 0;margin-top:46px}
+  p{font-size:16px}
+  .fig-body{padding:16px}
+  .cards{grid-template-columns:1fr;gap:14px}
+  .moves{grid-template-columns:1fr;gap:0}
+  .tbl .head{display:none}
+  .tbl.keyless .row .b .k{display:block}   /* header gone — the key is the only column cue left */
+  .tbl .row{flex-direction:column;gap:12px;padding:18px 16px}
+  .tbl .row .n{padding-top:0}
+  .callout{padding:22px 20px}
+  .callout .q{font-size:18px}
+  .bar-row{padding:14px 0}
+  .bar-row.accent{padding-left:13px;padding-right:13px}
+  .colophon{margin-top:50px}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<!-- ══ masthead ═════════════════════════════════════════════════════════ -->
+<header class="masthead">
+  <div class="wordmark"><b>[</b> Dinu Barbu <b>]</b></div>
+  <h1>The line between offloading and surrender<span class="dot">.</span></h1>
+  <p class="deck">Offloading is handing off the <em>how</em> and keeping the <em>what</em>.
+    Surrender is when the model's output quietly becomes your output and there is nothing left
+    that you feel you should check. Same tools, same shipped code — nine sections on where the
+    line sits and how to tell which side you are standing on.</p>
+  <div class="credit">// an explainer<br><br>
+    ↳ dvinubius · <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a></div>
+</header>
+
+<!-- ══ 01 · the distinction ═════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">01 / the distinction</div>
+  <h2>Two acts that look identical from the inside</h2>
+  <p class="lede">The term comes from a Wharton paper by <strong>Steven Shaw and Gideon
+    Nave</strong> — "Thinking – Fast, Slow, and Artificial: How AI is Reshaping Human Reasoning
+    and the Rise of Cognitive Surrender." Their distinction is the part worth memorising, and it
+    is not about how much you use the tool.</p>
+  <p><strong>Cognitive offloading</strong> is the calculator, the search engine, the GPS. You
+    hand off the how and keep the what. You still judge whether the result is sensible, and you
+    intervene when it isn't. <strong>Cognitive surrender</strong> is what happens when you stop
+    constructing the answer at all. The model's output becomes your output. There is nothing to
+    override, because you never formed an independent view to compare it against.</p>
+
+  <figure class="wide">
+    <div class="fig-label">fig. 1 · the same output, two acts</div>
+    <div class="fig-body">
+
+    <svg class="svg-wide" viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Two tracks. Both receive the same model answer; only the offloading track contains the step where you form your own view.">
+      <!-- track A · offloading -->
+      <text class="t-track" x="0" y="14" text-anchor="start" dominant-baseline="alphabetic">OFFLOADING — YOU STILL OWN THE ANSWER</text>
+
+      <rect class="f-shade" x="0" y="28" width="176" height="100"/>
+      <text class="t-role"  x="20" y="52"  text-anchor="start" dominant-baseline="alphabetic">the task</text>
+      <text class="t-title" x="20" y="84"  text-anchor="start" dominant-baseline="alphabetic">Something to do</text>
+      <text class="t-sub"   x="20" y="106" text-anchor="start" dominant-baseline="alphabetic">a PR, a bug, a call</text>
+
+      <rect class="f-ink" x="206" y="28" width="190" height="100"/>
+      <text class="t-role-dark"  x="226" y="52"  text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="226" y="84"  text-anchor="start" dominant-baseline="alphabetic">A complete answer</text>
+      <text class="t-sub-dark"   x="226" y="106" text-anchor="start" dominant-baseline="alphabetic">confident, plausible</text>
+
+      <rect class="f-shade" x="426" y="28" width="228" height="100"/>
+      <rect class="f-rule"  x="426" y="28" width="4" height="100"/>
+      <text class="t-role"  x="446" y="52"  text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="446" y="84"  text-anchor="start" dominant-baseline="alphabetic">Your own view of it</text>
+      <text class="t-sub"   x="446" y="106" text-anchor="start" dominant-baseline="alphabetic">compare, then override</text>
+
+      <rect class="f-shade" x="684" y="28" width="196" height="100"/>
+      <text class="t-role"  x="704" y="52"  text-anchor="start" dominant-baseline="alphabetic">the outcome</text>
+      <text class="t-title" x="704" y="84"  text-anchor="start" dominant-baseline="alphabetic">An answer you own</text>
+      <text class="t-sub"   x="704" y="106" text-anchor="start" dominant-baseline="alphabetic">you can defend the why</text>
+
+      <!-- Arrowheads stop in the gutter, short of each block. A head that crossed the block
+           edge would cross the ember rule with it, and the rule has to stay the only thing
+           marking that block. -->
+      <path class="s-flow" d="M 182 78 H 190"/><path class="h-flow" d="M 202 78 L 190 73 L 190 83 Z"/>
+      <path class="s-flow" d="M 402 78 H 410"/><path class="h-flow" d="M 422 78 L 410 73 L 410 83 Z"/>
+      <path class="s-flow" d="M 660 78 H 668"/><path class="h-flow" d="M 680 78 L 668 73 L 668 83 Z"/>
+
+      <line class="s-div" x1="0" y1="166" x2="880" y2="166"/>
+
+      <!-- track B · surrender -->
+      <text class="t-track" x="0" y="204" text-anchor="start" dominant-baseline="alphabetic">SURRENDER — THE OUTPUT BECAME THE ANSWER</text>
+
+      <rect class="f-shade" x="0" y="218" width="176" height="100"/>
+      <text class="t-role"  x="20" y="242" text-anchor="start" dominant-baseline="alphabetic">the task</text>
+      <text class="t-title" x="20" y="274" text-anchor="start" dominant-baseline="alphabetic">Something to do</text>
+      <text class="t-sub"   x="20" y="296" text-anchor="start" dominant-baseline="alphabetic">the same one</text>
+
+      <rect class="f-ink" x="206" y="218" width="190" height="100"/>
+      <text class="t-role-dark"  x="226" y="242" text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="226" y="274" text-anchor="start" dominant-baseline="alphabetic">A complete answer</text>
+      <text class="t-sub-dark"   x="226" y="296" text-anchor="start" dominant-baseline="alphabetic">the same one</text>
+
+      <rect class="s-slot" x="427" y="219" width="226" height="98"/>
+      <text class="t-role" x="446" y="242" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-sub"  x="446" y="274" text-anchor="start" dominant-baseline="alphabetic">No view was formed here.</text>
+      <text class="t-sub"  x="446" y="296" text-anchor="start" dominant-baseline="alphabetic">Nothing to compare against.</text>
+
+      <rect class="f-shade" x="684" y="218" width="196" height="100"/>
+      <text class="t-role"  x="704" y="242" text-anchor="start" dominant-baseline="alphabetic">the outcome</text>
+      <text class="t-title" x="704" y="274" text-anchor="start" dominant-baseline="alphabetic">The answer, adopted</text>
+      <text class="t-sub"   x="704" y="296" text-anchor="start" dominant-baseline="alphabetic">nothing felt left to check</text>
+
+      <path class="s-flow" d="M 182 268 H 190"/><path class="h-flow" d="M 202 268 L 190 263 L 190 273 Z"/>
+      <path class="s-flow" d="M 402 268 H 410"/><path class="h-flow" d="M 422 268 L 410 263 L 410 273 Z"/>
+      <path class="s-flow" d="M 660 268 H 668"/><path class="h-flow" d="M 680 268 L 668 263 L 668 273 Z"/>
+    </svg>
+
+    <!-- Stacked: each track gets ONE long run beside its column instead of three short hops
+         between boxes. The claim is unchanged — one pass, top to bottom — and the track titles
+         keep their full wording, which is what names the two cases.
+         Boxes are 210 units, sized to their longest label rather than to the column: the drawing
+         now spends 300 units instead of 340, so the cap can drop to 372 and the figure holds its
+         type size ~40px of viewport longer before it has to scale. The long run is Mark Strong,
+         the connector token — it is a rule to be followed the length of a track, not one of the
+         Ink hops between two adjacent blocks, and at Ink it out-weighed the blocks it runs past. -->
+    <svg class="svg-tall n300" viewBox="0 0 300 802" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Two tracks. Both receive the same model answer; only the offloading track contains the step where you form your own view.">
+      <text class="t-track" x="0" y="12" text-anchor="start" dominant-baseline="alphabetic">OFFLOADING — YOU STILL OWN THE ANSWER</text>
+
+      <rect class="f-shade" x="0" y="26" width="210" height="66"/>
+      <text class="t-role"  x="18" y="43" text-anchor="start" dominant-baseline="alphabetic">the task</text>
+      <text class="t-title" x="18" y="65" text-anchor="start" dominant-baseline="alphabetic">Something to do</text>
+      <text class="t-sub"   x="18" y="81" text-anchor="start" dominant-baseline="alphabetic">a PR, a bug, a call</text>
+
+      <rect class="f-ink" x="0" y="118" width="210" height="66"/>
+      <text class="t-role-dark"  x="18" y="135" text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="18" y="157" text-anchor="start" dominant-baseline="alphabetic">A complete answer</text>
+      <text class="t-sub-dark"   x="18" y="173" text-anchor="start" dominant-baseline="alphabetic">confident, plausible</text>
+
+      <rect class="f-shade" x="0" y="210" width="210" height="66"/>
+      <rect class="f-rule"  x="0" y="210" width="4" height="66"/>
+      <text class="t-role"  x="20" y="227" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="20" y="249" text-anchor="start" dominant-baseline="alphabetic">Your own view of it</text>
+      <text class="t-sub"   x="20" y="265" text-anchor="start" dominant-baseline="alphabetic">compare, then override</text>
+
+      <rect class="f-shade" x="0" y="302" width="210" height="66"/>
+      <text class="t-role"  x="18" y="319" text-anchor="start" dominant-baseline="alphabetic">the outcome</text>
+      <text class="t-title" x="18" y="341" text-anchor="start" dominant-baseline="alphabetic">An answer you own</text>
+      <text class="t-sub"   x="18" y="357" text-anchor="start" dominant-baseline="alphabetic">you can defend the why</text>
+
+      <path class="s-leader" d="M 240 36 V 344"/><path class="h-leader" d="M 240 358 L 234 345 L 246 345 Z"/>
+
+      <line class="s-div" x1="0" y1="406" x2="300" y2="406"/>
+
+      <text class="t-track" x="0" y="444" text-anchor="start" dominant-baseline="alphabetic">SURRENDER — THE OUTPUT BECAME THE ANSWER</text>
+
+      <rect class="f-shade" x="0" y="458" width="210" height="66"/>
+      <text class="t-role"  x="18" y="475" text-anchor="start" dominant-baseline="alphabetic">the task</text>
+      <text class="t-title" x="18" y="497" text-anchor="start" dominant-baseline="alphabetic">Something to do</text>
+      <text class="t-sub"   x="18" y="513" text-anchor="start" dominant-baseline="alphabetic">the same one</text>
+
+      <rect class="f-ink" x="0" y="550" width="210" height="66"/>
+      <text class="t-role-dark"  x="18" y="567" text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="18" y="589" text-anchor="start" dominant-baseline="alphabetic">A complete answer</text>
+      <text class="t-sub-dark"   x="18" y="605" text-anchor="start" dominant-baseline="alphabetic">the same one</text>
+
+      <rect class="s-slot" x="1" y="643" width="208" height="64"/>
+      <text class="t-role" x="18" y="659" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-sub"  x="18" y="679" text-anchor="start" dominant-baseline="alphabetic">No view was formed here.</text>
+      <text class="t-sub"  x="18" y="695" text-anchor="start" dominant-baseline="alphabetic">Nothing to compare against.</text>
+
+      <rect class="f-shade" x="0" y="734" width="210" height="66"/>
+      <text class="t-role"  x="18" y="751" text-anchor="start" dominant-baseline="alphabetic">the outcome</text>
+      <text class="t-title" x="18" y="773" text-anchor="start" dominant-baseline="alphabetic">The answer, adopted</text>
+      <text class="t-sub"   x="18" y="789" text-anchor="start" dominant-baseline="alphabetic">nothing felt left to check</text>
+
+      <path class="s-leader" d="M 240 468 V 776"/><path class="h-leader" d="M 240 790 L 234 777 L 246 777 Z"/>
+    </svg>
+
+    </div>
+    <figcaption>The task is the same and the model's answer is the same. <b>The only
+      difference is whether the ember-marked step happens</b> — and because it is a step you
+      either take or skip rather than a thing you can see afterwards, both tracks look identical
+      from the outside, and from the inside.</figcaption>
+  </figure>
+</section>
+
+<!-- ══ 02 · the evidence ════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">02 / the evidence</div>
+  <h2>Borrowed confidence</h2>
+  <p class="lede">Shaw and Nave ran three experiments across 1,372 participants. The headline
+    finding is not that people used AI badly — it is that <strong>simply having AI available was
+    enough for people to surrender.</strong></p>
+
+  <figure>
+    <div class="fig-label">fig. 2 · what the numbers say</div>
+    <div class="fig-body">
+      <div class="stat-strip">3 experiments · 1,372 participants · Wharton School, UPenn · Shaw &amp; Nave</div>
+      <div class="bars">
+        <div class="bar-row accent">
+          <div class="bar-head">
+            <span class="l">On trials where the AI was wrong, participants accepted the wrong answer</span>
+            <span class="v">73%</span>
+          </div>
+          <div class="track"><div class="fill" style="width:73%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head">
+            <span class="l">Answers that were deliberately incorrect, by design</span>
+            <span class="v">half</span>
+          </div>
+          <div class="track"><div class="fill" style="width:50%"></div></div>
+          <p class="note">And confidence <em>rose</em> when AI was available — while half the
+            answers were wrong on purpose. Participants borrowed the model's confidence, which is
+            always high, and treated it as their own.</p>
+        </div>
+      </div>
+    </div>
+    <figcaption>That borrowed-confidence effect is where this stops being a general
+      cognition story. <b>Models speak in declaratives and code review reads declaratives as
+      authority</b> — so the certainty transfers to us more cleanly than to almost anyone else.</figcaption>
+  </figure>
+</section>
+
+<!-- ══ 03 · where it lands ══════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">03 / where it lands</div>
+  <h2>Four places it happens in our work</h2>
+  <p class="lede">Not on the easy stuff. We notice when an agent invents an API or fabricates an
+    import. It happens further down, in the moments where <strong>the cost of forming an
+    independent view feels disproportionate to the task.</strong></p>
+
+  <figure class="wide">
+    <div class="fig-label">fig. 3 · the four sites, and what each one skips</div>
+    <div class="fig-body flush">
+      <div class="tbl">
+        <div class="head"><span class="n" style="width:22px;flex:none"></span><span class="a">the moment</span><span class="b">what got skipped</span></div>
+
+        <div class="row">
+          <span class="n">01</span>
+          <div class="a">
+            <span class="t">Reading the diff</span>
+            <span class="d">A 600-line PR. The variable names are reasonable, the tests are green,
+              you approve. Somewhere in the middle: a subtle ordering change in a transaction
+              boundary, or a default that flips for an edge case you didn't think to look at.</span>
+          </div>
+          <div class="b">
+            <span class="k">the review itself</span>
+            <span class="s">You didn't review the code. <em>You ratified it.</em> The surrender was
+              the absence of a decision.</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">02</span>
+          <div class="a">
+            <span class="t">Debugging what you don't understand</span>
+            <span class="d">The stack trace looks scary. You paste it in, a fix comes back, the fix
+              works, you move on. Two weeks later a related symptom resurfaces.</span>
+          </div>
+          <div class="b">
+            <span class="k">the root cause</span>
+            <span class="s">You removed the visible expression, not the bug. <em>Your model of the
+              system is now wrong somewhere you can't point to.</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">03</span>
+          <div class="a">
+            <span class="t">Making a design call</span>
+            <span class="d">A queue or a direct call between two services. You ask; it picks one
+              with a confident-sounding paragraph of justification; you go with it.</span>
+          </div>
+          <div class="b">
+            <span class="k">throughput, failure modes, replay semantics</span>
+            <span class="s">You took <em>the model's framing of the problem and the model's answer
+              in the same gesture.</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">04</span>
+          <div class="a">
+            <span class="t">Learning something new</span>
+            <span class="d">The one with numbers on it. In an Anthropic skill-formation paper,
+              engineers who used AI to <em>generate code</em> while learning a new library scored
+              <em>17% lower</em> on a follow-up comprehension quiz than the control group. Engineers
+              who used AI for <em>conceptual inquiry</em> — asking questions, exploring tradeoffs —
+              held their ground.</span>
+          </div>
+          <div class="b">
+            <span class="k">the mental model you were there to build</span>
+            <span class="s">Same tool, both times. <em>The posture changed the outcome.</em></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>The thread running through all four is the same: the model offered a
+      complete answer and it was accepted <b>instead of</b> constructing a parallel view. Sometimes
+      that's correct. Sometimes it's surrender. Which is why the figure gives none of the four
+      rows a colour — the point is that they are the same act.</figcaption>
+  </figure>
+</section>
+
+<!-- ══ 04 · why us ══════════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">04 / why us</div>
+  <h2>Why engineers are unusually exposed</h2>
+  <p class="lede">Four features of our work make us more vulnerable than the average knowledge
+    worker. No figure here — these are four independent reasons, not a mechanism.</p>
+
+  <div class="cards">
+    <div class="card">
+      <div class="k">01 / the plausibility filter</div>
+      <h3>Surface signals look correct</h3>
+      <p>Generated code compiles. It passes the linter. It runs. It looks like the rest of the
+        file. Most domains have no such strong "looks plausible" filter — ours does, and it is the
+        wrong filter. <strong>Surface correctness is not systemic correctness,</strong> and the gap
+        between them is exactly where surrender hides.</p>
+    </div>
+    <div class="card">
+      <div class="k">02 / the dashboard</div>
+      <h3>Throughput is the visible metric</h3>
+      <p>PRs merged, features shipped, tickets closed. None of these distinguish "I built this and
+        understand it" from "the agent built this and I approved it." The org rewards both
+        equivalently in the short run. <strong>Surrender is invisible to the dashboard.</strong></p>
+    </div>
+    <div class="card">
+      <div class="k">03 / the register</div>
+      <h3>Confidence transfers cleanly</h3>
+      <p>Models speak in declaratives; code reviews read declaratives as authority. <code>we use a
+        debounce of 300ms here to avoid jank</code> sounds like institutional knowledge even when
+        the number was invented on the spot. You inherit the certainty without the reasoning.</p>
+    </div>
+    <div class="card">
+      <div class="k">04 / path dependence</div>
+      <h3>The work composes</h3>
+      <p>Each surrender enables the next. Once you've accepted a chunk you don't fully understand,
+        the next change to that chunk is almost guaranteed to be another act of surrender, because
+        forming an independent view now means reconstructing the part you skipped.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 05 · the bill ════════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">05 / the bill</div>
+  <h2>Surrender is how comprehension debt gets taken on</h2>
+  <p class="lede"><strong>Comprehension debt</strong> is the growing gap between how much code
+    exists in your system and how much of it any human genuinely understands. Cognitive surrender
+    is the <em>mechanism</em> by which it accumulates: each act is a tiny loan, and none of them
+    feel like a problem on the day they happen.</p>
+  <p>MIT's <em>Your Brain on ChatGPT</em> paper found the same pattern at the neural level:
+    writers leaning on AI showed measurably reduced neural connectivity, weaker memory of what
+    they had just produced, and difficulty reconstructing their own reasoning. The authors called
+    it <strong>cognitive debt</strong>, borrowed from technical debt — short-term gain,
+    compounding long-term cost.</p>
+
+  <figure class="wide">
+    <div class="fig-label">fig. 4 · the loan and the bill</div>
+    <div class="fig-body">
+
+    <svg class="svg-wide" viewBox="0 0 880 190" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Three small acts of surrender compound into one bill: something breaks and nobody can reconstruct the system.">
+      <text class="t-lead" x="0" y="12" text-anchor="start" dominant-baseline="alphabetic">EACH ACT OF SURRENDER · A TINY LOAN</text>
+
+      <rect class="f-shade" x="0" y="28" width="190" height="92"/>
+      <text class="t-role"  x="18" y="50" text-anchor="start" dominant-baseline="alphabetic">01</text>
+      <text class="t-title" x="18" y="78" text-anchor="start" dominant-baseline="alphabetic">A patch you don't</text>
+      <text class="t-title" x="18" y="98" text-anchor="start" dominant-baseline="alphabetic">fully understand</text>
+
+      <rect class="f-shade" x="214" y="28" width="190" height="92"/>
+      <text class="t-role"  x="232" y="50" text-anchor="start" dominant-baseline="alphabetic">02</text>
+      <text class="t-title" x="232" y="78" text-anchor="start" dominant-baseline="alphabetic">A decision the</text>
+      <text class="t-title" x="232" y="98" text-anchor="start" dominant-baseline="alphabetic">architecture absorbed</text>
+
+      <rect class="f-shade" x="428" y="28" width="190" height="92"/>
+      <text class="t-role"  x="446" y="50" text-anchor="start" dominant-baseline="alphabetic">03</text>
+      <text class="t-title" x="446" y="78" text-anchor="start" dominant-baseline="alphabetic">A test you didn't</text>
+      <text class="t-title" x="446" y="98" text-anchor="start" dominant-baseline="alphabetic">think to specify</text>
+
+      <path class="s-flow" d="M 196 74 H 200"/><path class="h-flow" d="M 210 74 L 200 69 L 200 79 Z"/>
+      <path class="s-flow" d="M 410 74 H 414"/><path class="h-flow" d="M 424 74 L 414 69 L 414 79 Z"/>
+      <path class="s-flow" d="M 624 74 H 632"/><path class="h-flow" d="M 644 74 L 632 69 L 632 79 Z"/>
+
+      <path class="s-leader" d="M 0 132 V 144 H 618 V 132"/>
+      <text class="t-note" x="309" y="166" text-anchor="middle" dominant-baseline="alphabetic">None of them feel like a problem on the day. They compound.</text>
+
+      <rect class="f-ink"       x="648" y="16" width="232" height="140"/>
+      <rect class="f-rule-dark" x="876" y="16" width="4" height="140"/>
+      <text class="t-role-dark"  x="668" y="44"  text-anchor="start" dominant-baseline="alphabetic">the bill</text>
+      <text class="t-title-dark" x="668" y="74"  text-anchor="start" dominant-baseline="alphabetic">Something breaks.</text>
+      <text class="t-sub-dark"   x="668" y="102" text-anchor="start" dominant-baseline="alphabetic">Nobody on the team can</text>
+      <text class="t-sub-dark"   x="668" y="120" text-anchor="start" dominant-baseline="alphabetic">reconstruct the system from</text>
+      <text class="t-sub-dark"   x="668" y="138" text-anchor="start" dominant-baseline="alphabetic">first principles.</text>
+    </svg>
+
+    <!-- Stacked: the three loans indent into a narrower column and a Mark Strong rule runs
+         down their left and along under them. A bracket that only touches the bottom edge
+         reads as belonging to whatever sits under it; an L that encloses the column on two
+         sides can only be read as gathering the three boxes it wraps. -->
+    <svg class="svg-tall" viewBox="0 0 340 492" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Three small acts of surrender compound into one bill: something breaks and nobody can reconstruct the system.">
+      <text class="t-lead" x="0" y="12" text-anchor="start" dominant-baseline="alphabetic">EACH ACT OF SURRENDER · A TINY LOAN</text>
+
+      <rect class="f-shade" x="24" y="26" width="230" height="64"/>
+      <text class="t-role"  x="42" y="46" text-anchor="start" dominant-baseline="alphabetic">01</text>
+      <text class="t-title" x="42" y="68" text-anchor="start" dominant-baseline="alphabetic">A patch you don't</text>
+      <text class="t-title" x="42" y="84" text-anchor="start" dominant-baseline="alphabetic">fully understand</text>
+
+      <rect class="f-shade" x="24" y="100" width="230" height="64"/>
+      <text class="t-role"  x="42" y="120" text-anchor="start" dominant-baseline="alphabetic">02</text>
+      <text class="t-title" x="42" y="142" text-anchor="start" dominant-baseline="alphabetic">A decision the</text>
+      <text class="t-title" x="42" y="158" text-anchor="start" dominant-baseline="alphabetic">architecture absorbed</text>
+
+      <rect class="f-shade" x="24" y="174" width="230" height="64"/>
+      <text class="t-role"  x="42" y="194" text-anchor="start" dominant-baseline="alphabetic">03</text>
+      <text class="t-title" x="42" y="216" text-anchor="start" dominant-baseline="alphabetic">A test you didn't</text>
+      <text class="t-title" x="42" y="232" text-anchor="start" dominant-baseline="alphabetic">think to specify</text>
+
+      <!-- x=0.75, not 0: the 1.5-wide stroke is centred, so this puts its LEFT edge on x=0 —
+           flush with the left edge of the bill box below. -->
+      <path class="s-leader" d="M 0.75 26 V 252 H 254"/>
+
+      <path class="s-flow" d="M 28 262 V 296"/><path class="h-flow" d="M 28 308 L 22 296 L 34 296 Z"/>
+      <text class="t-note" x="58" y="280" text-anchor="start" dominant-baseline="alphabetic">None feel like a problem on</text>
+      <text class="t-note" x="58" y="298" text-anchor="start" dominant-baseline="alphabetic">the day. They compound.</text>
+
+      <rect class="f-ink"       x="0" y="324" width="340" height="158"/>
+      <rect class="f-rule-dark" x="336" y="324" width="4" height="158"/>
+      <text class="t-role-dark"  x="20" y="352" text-anchor="start" dominant-baseline="alphabetic">the bill</text>
+      <text class="t-title-dark" x="20" y="382" text-anchor="start" dominant-baseline="alphabetic">Something breaks.</text>
+      <text class="t-sub-dark"   x="20" y="412" text-anchor="start" dominant-baseline="alphabetic">Nobody on the team can</text>
+      <text class="t-sub-dark"   x="20" y="430" text-anchor="start" dominant-baseline="alphabetic">reconstruct the system from</text>
+      <text class="t-sub-dark"   x="20" y="448" text-anchor="start" dominant-baseline="alphabetic">first principles.</text>
+    </svg>
+
+    </div>
+    <figcaption>Surrender is how you take on cognitive debt. Comprehension debt is the
+      bill, denominated in lost mental model. <b>The interest gets paid the next time something
+      goes wrong.</b> The ember rule marks that payment, not the loans — the loans are the cheap
+      part, which is exactly why they are easy to keep taking.</figcaption>
+  </figure>
+
+  <div class="callout">
+    <div class="q">The AI doesn't create the debt. The posture you bring to it does.</div>
+    <p>The same model that hollows out one engineer's mental model can sharpen another's,
+      depending on whether it is being used <em>to think</em> or <em>instead of thinking</em>.</p>
+  </div>
+</section>
+
+<!-- ══ 06 · the question ════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">06 / the question</div>
+  <h2>Calibration, not abstinence</h2>
+  <p class="lede">Shaw himself is careful not to be alarmist: surrender is not a claim that AI is
+    bad or that using it is irrational — in many settings it improves judgment. His framing is
+    that <strong>the key issue is calibration</strong> — knowing when the tool is helping you
+    think, and when it has quietly taken over the thinking.</p>
+
+  <div class="callout accent">
+    <div class="q">"Am I forming an independent view of this answer, or just adopting the agent's
+      view wholesale?"</div>
+    <p>Those are different psychological acts that look identical from the outside — and, on the
+      day, from the inside too. This is the one question the rest of the post exists to keep
+      answerable.</p>
+  </div>
+
+  <figure class="wide">
+    <div class="fig-label">fig. 5 · five checks that keep you on the offloading side</div>
+    <div class="fig-body flush">
+      <div class="tbl keyless">
+        <div class="head"><span class="n" style="width:22px;flex:none"></span><span class="a">the habit</span><span class="b">the moment it catches</span></div>
+
+        <div class="row">
+          <span class="n">01</span>
+          <div class="a">
+            <span class="t">Construct an expectation first</span>
+            <span class="d">Before running the agent on anything non-trivial, write down — even
+              just in your head — what the answer should look like. Three lines or fifty. A queue
+              or a direct call. This module or that one.</span>
+          </div>
+          <div class="b">
+            <span class="k">the moment it catches</span>
+            <span class="s">A match means you're calibrated. A mismatch gives you a real choice:
+              <em>am I wrong, or is it?</em> That choice is the thing surrender skips.</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">02</span>
+          <div class="a">
+            <span class="t">Read the diff as if the AI didn't write it</span>
+            <span class="d">Pretend a junior engineer on your team submitted the PR. Would you merge
+              it on the strength of "the tests pass"?</span>
+          </div>
+          <div class="b">
+            <span class="k">the moment it catches</span>
+            <span class="s">The job hasn't changed; the author has. <em>"Seems right" is still not
+              a review.</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">03</span>
+          <div class="a">
+            <span class="t">Ask the model to argue against itself</span>
+            <span class="d">Most models will produce a confident answer and then, when prompted, an
+              equally confident counter-argument. The second pass is cheap.</span>
+          </div>
+          <div class="b">
+            <span class="k">the moment it catches</span>
+            <span class="s">It breaks the borrowed-confidence effect. If you can't reason about
+              which of the two is right, <em>you've found the place you were about to
+              surrender.</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">04</span>
+          <div class="a">
+            <span class="t">Notice when you're tired</span>
+            <span class="d">Surrender is a fatigue phenomenon. The first PR of the day gets a real
+              review; the fifth gets a glance.</span>
+          </div>
+          <div class="b">
+            <span class="k">the moment it catches</span>
+            <span class="s">The converged version of the habit: <em>stop letting the agent generate
+              when you're too tired to evaluate.</em></span>
+          </div>
+        </div>
+
+        <div class="row">
+          <span class="n">05</span>
+          <div class="a">
+            <span class="t">Watch where the confidence is coming from</span>
+            <span class="d">You're defending a design choice in a meeting and you can't reconstruct
+              why it was made — only that the agent suggested it and it seemed reasonable.</span>
+          </div>
+          <div class="b">
+            <span class="k">the moment it catches</span>
+            <span class="s">That's a surrender artifact. <em>Go back to the code and rebuild the
+              why before the conversation continues.</em></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Five peers, deliberately uncoloured: the source ranks none of them, and a
+      hue on any one row would assert an order it doesn't claim.</figcaption>
+  </figure>
+</section>
+
+<!-- ══ 07 · structure ══════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">07 / structure</div>
+  <h2>Make surrender structurally harder</h2>
+  <p class="lede">Personal heuristics matter, but they run on the discipline you have left at
+    5pm on a Friday. The structural version doesn't: <strong>build scaffolding that makes
+    surrender harder</strong> and you stop relying on catching yourself.</p>
+
+  <figure>
+    <div class="fig-label">fig. 6 · surrender scales with size</div>
+    <div class="fig-body">
+      <div class="bars">
+        <div class="bar-row">
+          <div class="bar-head"><span class="l">A change you can actually read</span><span class="v">50 lines</span></div>
+          <div class="track"><div class="fill" style="width:8.33%"></div></div>
+        </div>
+        <div class="bar-row accent">
+          <div class="bar-head"><span class="l">Google's PR norm — the unit of review is the unit of comprehension</span><span class="v">~100 lines</span></div>
+          <div class="track"><div class="fill" style="width:16.67%"></div></div>
+        </div>
+        <div class="bar-row">
+          <div class="bar-head"><span class="l">A change you cannot — the PR from fig. 3, row 01</span><span class="v">600 lines</span></div>
+          <div class="track"><div class="fill" style="width:100%"></div></div>
+        </div>
+      </div>
+    </div>
+    <figcaption>Bars to scale; the track is 600 lines. <b>The norm exists for human
+      reasons and works against AI surrender for the same reasons</b> — which is why it, and not
+      the disaster row, is the line the figure is about.</figcaption>
+  </figure>
+
+  <div class="moves">
+    <div class="move">
+      <div class="k">01 / the exit</div>
+      <h3>Verification as a hard exit criterion</h3>
+      <p>Every agent-completed task terminates in concrete evidence: a test that runs, a
+        screenshot, a log, a runtime trace, a reviewer signoff. "It looks done" is the
+        surrender-friendly exit; "here is the evidence it works" is the surrender-resistant one.</p>
+    </div>
+    <div class="move">
+      <div class="k">02 / pre-written rebuttals</div>
+      <h3>Anti-rationalization tables</h3>
+      <p>Pair each common excuse for skipping a workflow step with a written rebuttal. <code>This
+        task is too simple to need a spec</code> → <code>Acceptance criteria still apply</code>.
+        Models are exceptional at generating plausible reasons to skip the rigorous step; the
+        table refuses to argue with them on the day.</p>
+    </div>
+    <div class="move">
+      <div class="k">03 / scope</div>
+      <h3>Smaller scope, smaller PRs</h3>
+      <p>Surrender scales with size — see fig. 6. Make the unit of review small enough to
+        actually comprehend, because that unit <em>is</em> the unit of comprehension.</p>
+    </div>
+    <div class="move">
+      <div class="k">04 / posture while learning</div>
+      <h3>Conceptual inquiry over generation</h3>
+      <p>The skill-formation finding restated as a habit: when you're new to a library or a
+        system, ask the agent to explain before you ask it to generate. Same tool, used to
+        interrogate rather than to produce, builds rather than erodes the mental model.</p>
+    </div>
+    <div class="move">
+      <div class="k">05 / deliberate resistance</div>
+      <h3>Friction by design</h3>
+      <p>The arXiv "Cognitive Agency Surrender" paper proposes <em>Scaffolded Cognitive
+        Friction</em>: deliberately introducing moments of resistance to interrupt heuristic
+        acceptance. In engineering terms — a required design doc before generation, a confirmation
+        step before merge, a checklist before deploy.</p>
+    </div>
+    <div class="move">
+      <div class="k">06 / calibration, not virtue</div>
+      <h3>Solo time at the keyboard</h3>
+      <p>Write some code without the agent, every week. Not as a moral exercise. The day you
+        can't comfortably build something simple unassisted is the day the offloading became
+        surrender and you didn't notice.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 08 · the two postures ═══════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">08 / the two postures</div>
+  <h2>Mutual amplification, not delegation</h2>
+  <p class="lede">Andy Clark, quoted in <em>Time</em> on this research, draws the distinction that
+    makes the whole thing actionable: there is a difference between <strong>delegating</strong> to
+    an AI system and <strong>cooperating</strong> with it. Delegation produces surrender.
+    Cooperation produces mutual amplification — a loop where your prompts sharpen the output,
+    which sharpens your next prompts, which sharpens your model of the problem.</p>
+
+  <figure class="wide">
+    <div class="fig-label">fig. 7 · the loop that closes, and the one that doesn't</div>
+    <div class="fig-body">
+
+    <svg class="svg-wide" viewBox="0 0 880 370" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Two four-step loops. In cooperation the loop closes through a block marked in ember: your mental model, sharper. In delegation that block is empty and the return edge never closes.">
+      <!-- panel A · cooperation -->
+      <rect class="s-panel" x="0" y="0" width="420" height="360"/>
+      <text class="t-lead" x="20" y="28" text-anchor="start" dominant-baseline="alphabetic">COOPERATION · MUTUAL AMPLIFICATION</text>
+
+      <rect class="f-shade" x="24" y="48" width="170" height="76"/>
+      <text class="t-role"  x="42" y="70"  text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="42" y="94"  text-anchor="start" dominant-baseline="alphabetic">Your prompt</text>
+      <text class="t-sub"   x="42" y="112" text-anchor="start" dominant-baseline="alphabetic">carries a real view</text>
+
+      <rect class="f-ink" x="226" y="48" width="170" height="76"/>
+      <text class="t-role-dark"  x="244" y="70"  text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="244" y="94"  text-anchor="start" dominant-baseline="alphabetic">Reads it, answers</text>
+      <text class="t-sub-dark"   x="244" y="112" text-anchor="start" dominant-baseline="alphabetic">second engineer</text>
+
+      <rect class="f-ink" x="226" y="196" width="170" height="76"/>
+      <text class="t-role-dark"  x="244" y="218" text-anchor="start" dominant-baseline="alphabetic">its output</text>
+      <text class="t-title-dark" x="244" y="240" text-anchor="start" dominant-baseline="alphabetic">Sharper than</text>
+      <text class="t-title-dark" x="244" y="258" text-anchor="start" dominant-baseline="alphabetic">your draft was</text>
+
+      <rect class="f-shade" x="24" y="196" width="170" height="76"/>
+      <rect class="f-rule"  x="24" y="196" width="4" height="76"/>
+      <text class="t-role"  x="44" y="218" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="44" y="240" text-anchor="start" dominant-baseline="alphabetic">Your mental model,</text>
+      <text class="t-title" x="44" y="258" text-anchor="start" dominant-baseline="alphabetic">sharper</text>
+
+      <path class="s-flow" d="M 198 86 H 210"/><path class="h-flow" d="M 222 86 L 210 81 L 210 91 Z"/>
+      <path class="s-flow" d="M 311 128 V 180"/><path class="h-flow" d="M 311 192 L 306 180 L 316 180 Z"/>
+      <path class="s-flow" d="M 222 234 H 210"/><path class="h-flow" d="M 198 234 L 210 229 L 210 239 Z"/>
+      <path class="s-flow" d="M 109 192 V 140"/><path class="h-flow" d="M 109 128 L 104 140 L 114 140 Z"/>
+
+      <text class="t-note" x="24" y="306" text-anchor="start" dominant-baseline="alphabetic">You end the session able to build the thing yourself.</text>
+      <text class="t-note" x="24" y="326" text-anchor="start" dominant-baseline="alphabetic">You just chose a faster path.</text>
+
+      <!-- panel B · delegation -->
+      <rect class="s-panel" x="460" y="0" width="420" height="360"/>
+      <text class="t-lead" x="480" y="28" text-anchor="start" dominant-baseline="alphabetic">DELEGATION · SURRENDER</text>
+
+      <rect class="f-shade" x="484" y="48" width="170" height="76"/>
+      <text class="t-role"  x="502" y="70"  text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="502" y="94"  text-anchor="start" dominant-baseline="alphabetic">Your prompt</text>
+      <text class="t-sub"   x="502" y="112" text-anchor="start" dominant-baseline="alphabetic">hands over the task</text>
+
+      <rect class="f-ink" x="686" y="48" width="170" height="76"/>
+      <text class="t-role-dark"  x="704" y="70"  text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="704" y="94"  text-anchor="start" dominant-baseline="alphabetic">Reads it, answers</text>
+      <text class="t-sub-dark"   x="704" y="112" text-anchor="start" dominant-baseline="alphabetic">only engineer</text>
+
+      <rect class="f-ink" x="686" y="196" width="170" height="76"/>
+      <text class="t-role-dark"  x="704" y="218" text-anchor="start" dominant-baseline="alphabetic">its output</text>
+      <text class="t-title-dark" x="704" y="240" text-anchor="start" dominant-baseline="alphabetic">Shipped as is</text>
+      <text class="t-sub-dark"   x="704" y="258" text-anchor="start" dominant-baseline="alphabetic">its model sharpens</text>
+
+      <rect class="s-slot" x="485" y="197" width="168" height="74"/>
+      <text class="t-role" x="502" y="218" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <!-- Both lines are measured to sit inside the 168-unit slot: "unchanged. Nothing
+           returns." ran 13 units past its right edge, and a label escaping the very box
+           whose emptiness is the point is the one overflow this figure cannot afford. -->
+      <text class="t-sub"  x="502" y="240" text-anchor="start" dominant-baseline="alphabetic">Your model, unchanged.</text>
+      <text class="t-sub"  x="502" y="258" text-anchor="start" dominant-baseline="alphabetic">Nothing comes back.</text>
+
+      <path class="s-flow" d="M 658 86 H 670"/><path class="h-flow" d="M 682 86 L 670 81 L 670 91 Z"/>
+      <path class="s-flow" d="M 771 128 V 180"/><path class="h-flow" d="M 771 192 L 766 180 L 776 180 Z"/>
+      <path class="s-flow" d="M 682 234 H 670"/><path class="h-flow" d="M 658 234 L 670 229 L 670 239 Z"/>
+      <path class="s-slot" d="M 569 192 V 136"/>
+
+      <text class="t-note" x="484" y="306" text-anchor="start" dominant-baseline="alphabetic">You can't reconstruct the design, or debug the</text>
+      <text class="t-note" x="484" y="326" text-anchor="start" dominant-baseline="alphabetic">code, without the agent.</text>
+    </svg>
+
+    <svg class="svg-tall" viewBox="0 0 340 960" xmlns="http://www.w3.org/2000/svg"
+         role="img" aria-label="Two four-step loops. In cooperation the loop closes through a block marked in ember: your mental model, sharper. In delegation that block is empty and the return edge never closes.">
+      <!-- panel A -->
+      <rect class="s-panel" x="0" y="0" width="340" height="456"/>
+      <text class="t-lead" x="16" y="26" text-anchor="start" dominant-baseline="alphabetic">COOPERATION · MUTUAL AMPLIFICATION</text>
+
+      <rect class="f-shade" x="48" y="44" width="276" height="64"/>
+      <text class="t-role"  x="66" y="64"  text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="66" y="86"  text-anchor="start" dominant-baseline="alphabetic">Your prompt</text>
+      <text class="t-sub"   x="66" y="102" text-anchor="start" dominant-baseline="alphabetic">carries a real view</text>
+      <path class="s-flow" d="M 186 112 V 126"/><path class="h-flow" d="M 186 134 L 181 124 L 191 124 Z"/>
+
+      <rect class="f-ink" x="48" y="138" width="276" height="64"/>
+      <text class="t-role-dark"  x="66" y="158" text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="66" y="180" text-anchor="start" dominant-baseline="alphabetic">Reads it, answers</text>
+      <text class="t-sub-dark"   x="66" y="196" text-anchor="start" dominant-baseline="alphabetic">second engineer</text>
+      <path class="s-flow" d="M 186 206 V 220"/><path class="h-flow" d="M 186 228 L 181 218 L 191 218 Z"/>
+
+      <rect class="f-ink" x="48" y="232" width="276" height="64"/>
+      <text class="t-role-dark"  x="66" y="252" text-anchor="start" dominant-baseline="alphabetic">its output</text>
+      <text class="t-title-dark" x="66" y="274" text-anchor="start" dominant-baseline="alphabetic">Sharper than your draft</text>
+      <text class="t-sub-dark"   x="66" y="290" text-anchor="start" dominant-baseline="alphabetic">and you can see why</text>
+      <path class="s-flow" d="M 186 300 V 314"/><path class="h-flow" d="M 186 322 L 181 312 L 191 312 Z"/>
+
+      <rect class="f-shade" x="48" y="326" width="276" height="64"/>
+      <rect class="f-rule"  x="48" y="326" width="4" height="64"/>
+      <text class="t-role"  x="70" y="346" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="70" y="368" text-anchor="start" dominant-baseline="alphabetic">Your mental model, sharper</text>
+      <text class="t-sub"   x="70" y="384" text-anchor="start" dominant-baseline="alphabetic">the loop closes here</text>
+
+      <path class="s-flow" d="M 48 358 H 22 V 76 H 38"/><path class="h-flow" d="M 46 76 L 36 71 L 36 81 Z"/>
+
+      <text class="t-note" x="16" y="418" text-anchor="start" dominant-baseline="alphabetic">You end able to build the thing yourself.</text>
+      <text class="t-note" x="16" y="438" text-anchor="start" dominant-baseline="alphabetic">You just chose a faster path.</text>
+
+      <!-- panel B -->
+      <rect class="s-panel" x="0" y="496" width="340" height="456"/>
+      <text class="t-lead" x="16" y="522" text-anchor="start" dominant-baseline="alphabetic">DELEGATION · SURRENDER</text>
+
+      <rect class="f-shade" x="48" y="540" width="276" height="64"/>
+      <text class="t-role"  x="66" y="560" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-title" x="66" y="582" text-anchor="start" dominant-baseline="alphabetic">Your prompt</text>
+      <text class="t-sub"   x="66" y="598" text-anchor="start" dominant-baseline="alphabetic">hands over the task</text>
+      <path class="s-flow" d="M 186 608 V 622"/><path class="h-flow" d="M 186 630 L 181 620 L 191 620 Z"/>
+
+      <rect class="f-ink" x="48" y="634" width="276" height="64"/>
+      <text class="t-role-dark"  x="66" y="654" text-anchor="start" dominant-baseline="alphabetic">the model</text>
+      <text class="t-title-dark" x="66" y="676" text-anchor="start" dominant-baseline="alphabetic">Reads it, answers</text>
+      <text class="t-sub-dark"   x="66" y="692" text-anchor="start" dominant-baseline="alphabetic">only engineer</text>
+      <path class="s-flow" d="M 186 702 V 716"/><path class="h-flow" d="M 186 724 L 181 714 L 191 714 Z"/>
+
+      <rect class="f-ink" x="48" y="728" width="276" height="64"/>
+      <text class="t-role-dark"  x="66" y="748" text-anchor="start" dominant-baseline="alphabetic">its output</text>
+      <text class="t-title-dark" x="66" y="770" text-anchor="start" dominant-baseline="alphabetic">Shipped as is</text>
+      <text class="t-sub-dark"   x="66" y="786" text-anchor="start" dominant-baseline="alphabetic">its model sharpens</text>
+      <path class="s-flow" d="M 186 796 V 810"/><path class="h-flow" d="M 186 818 L 181 808 L 191 808 Z"/>
+
+      <rect class="s-slot" x="49" y="823" width="274" height="62"/>
+      <text class="t-role" x="66" y="843" text-anchor="start" dominant-baseline="alphabetic">you</text>
+      <text class="t-sub"  x="66" y="865" text-anchor="start" dominant-baseline="alphabetic">Your model, unchanged.</text>
+      <text class="t-sub"  x="66" y="881" text-anchor="start" dominant-baseline="alphabetic">Nothing comes back.</text>
+
+      <!-- No arrowhead, and the path stops short of the box: an arrowhead would say the loop
+           closes, which is the one thing this panel exists to deny. Read against the solid,
+           headed return in the cooperation panel above. -->
+      <path class="s-slot" d="M 48 854 H 22 V 572"/>
+
+      <text class="t-note" x="16" y="914" text-anchor="start" dominant-baseline="alphabetic">You can't reconstruct the design, or debug</text>
+      <text class="t-note" x="16" y="934" text-anchor="start" dominant-baseline="alphabetic">the code, without the agent.</text>
+    </svg>
+
+    </div>
+    <figcaption>Same two roles, same four steps, same tools. <b>The only structural
+      difference is whether the return edge closes</b> — whether anything comes back to you. In
+      the cooperation loop the agent is the second engineer in the room; in the delegation loop it
+      is the only one.</figcaption>
+  </figure>
+
+  <p style="margin-top:32px">Both postures ship code. From the outside, on a single sprint, they
+    look identical. <strong>The difference shows up six months in, when something breaks and one
+    of the two engineers can fix it from first principles and the other can't.</strong></p>
+</section>
+
+<!-- ══ 09 · your move ══════════════════════════════════════════════════ -->
+<section>
+  <div class="eyebrow">09 / your move</div>
+  <h2>The test to run on yourself</h2>
+  <p class="lede">None of this is an argument against the tools. The post is explicit that the
+    people sitting this out are making the bigger mistake. Cognitive offloading is a superpower;
+    surrender is the failure mode of using it without noticing the line.</p>
+
+  <div class="callout accent">
+    <div class="q">If your code is shipping and your understanding of the system is shrinking,
+      you're paying with cognitive debt. If your code is shipping and your understanding is
+      growing, you're doing the actual job — just faster than before.</div>
+    <p>The tools are the same in both cases. The posture is what differs, and that part is still
+      entirely yours.</p>
+  </div>
+
+  <p style="margin-top:30px"><strong>On your next non-trivial task, in this order:</strong> write
+    down what you expect the answer to look like <em>before</em> you prompt; keep the change under
+    ~100 lines so review is still comprehension; require a piece of concrete evidence as the exit,
+    not "it looks done"; and when you catch yourself unable to say why a choice was made, stop and
+    rebuild the why before the conversation continues.</p>
+</section>
+
+<footer class="colophon">
+  <b>[</b> Dinu Barbu <b>]</b> · Senior Software Engineer — Distributed Systems &amp; Observability<br>
+  ↳ dvinubius · <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a>
+  <div class="refs">
+    <span class="refs-label">sources</span>
+    <span><a class="qlink" href="https://addyosmani.com/blog/cognitive-surrender/">Addy Osmani, "Cognitive surrender"</a> →</span>
+    <span><a class="qlink" href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6097646">Shaw &amp; Nave, "Thinking — Fast, Slow, and Artificial"</a> →</span>
+  </div>
+</footer>
+
+</div>
+
+</body></html>

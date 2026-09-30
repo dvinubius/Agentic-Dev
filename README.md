@@ -70,7 +70,53 @@ notes rather than hidden behind a single definitive claim.
 | [`Universal-Benchmark/`](Universal-Benchmark/) | Work in progress on a universal benchmark for comparing coding models across project scenarios and execution styles. |
 | [`research/QRSPI-Methodology/`](research/QRSPI-Methodology/) | Research notes on the QRSPI workflow for planning and delivering complex brownfield changes. |
 | [`UI-design/`](UI-design/) | Research into agentic UI and design-to-implementation workflows, including paths with and without Figma. |
+| [`skills/`](skills/) | Reusable coding-agent skills, scripts, and reference material. See [Skills](#skills). |
+| [`explainers/`](explainers/) | Visual explainers in HTML and PDF, including earlier PDF exports. See [Explainers](#explainers). |
 | [`Agentic-Methodologies/deprecated/`](Agentic-Methodologies/deprecated/) | Earlier approaches retained for comparison and historical context. They are not current recommendations. |
+
+## Skills
+
+Each skill lives in `skills/<name>/SKILL.md`. An agent environment that supports
+skills can load these files from this repository; the supporting scripts and
+references remain beside their respective skills.
+
+| Skill | Purpose |
+| --- | --- |
+| [`daedalus`](skills/daedalus/SKILL.md) | Turn finished coding work into a deliberate-practice challenge. |
+| [`explain-diff`](skills/explain-diff/SKILL.md) | Create an interactive HTML explanation of a code change. |
+| [`feynman`](skills/feynman/SKILL.md) | Teach a technical theme through its mechanism, examples, and an exercise. |
+| [`neatify-code`](skills/neatify-code/SKILL.md) | Improve maintainability in a bounded code area while preserving behavior. |
+| [`no-bs-opus`](skills/no-bs-opus/SKILL.md) | Apply a direct, concise communication style. |
+| [`no-bs-opus-explicit`](skills/no-bs-opus-explicit/SKILL.md) | Apply the original, more explicit version of that style. |
+| [`reflow-markdown`](skills/reflow-markdown/SKILL.md) | Rewrap Markdown prose without changing its words or structure. |
+| [`socrates`](skills/socrates/SKILL.md) | Guide reasoning with targeted questions and graduated hints. |
+| [`to-my-specs`](skills/to-my-specs/SKILL.md) | Turn confirmed product intent into `.devnotes/specs` documentation. |
+| [`validate-markdown-repo`](skills/validate-markdown-repo/SKILL.md) | Check local Markdown links, skill frontmatter, and template pairs. |
+| [`web-app-arsenal`](skills/web-app-arsenal/SKILL.md) | Compare web application tools against a project's needs. |
+| [`writing-great-skills`](skills/writing-great-skills/SKILL.md) | Write, audit, and test agent skills. |
+
+Check this README, the attribution notice, and the skill documentation from
+the repository root with
+`python3 skills/validate-markdown-repo/scripts/validate_markdown_repo.py --root . --frontmatter-root skills --include README.md --include THIRD_PARTY_NOTICES.md --include 'skills/**/*.md'`.
+The [Markdown reflower](skills/reflow-markdown/scripts/reflow_markdown.py) is
+available for repositories with an established wrap width; this repository
+does not enforce one. See [third-party notices](THIRD_PARTY_NOTICES.md) for
+attribution of adapted skills.
+
+## Explainers
+
+The visual explainers are available as HTML and PDF:
+
+| Topic | HTML | PDF |
+| --- | --- | --- |
+| Agent loop | [Read](explainers/agent-loop.html) | [Download](explainers/agent-loop.pdf) |
+| Cognitive surrender | [Read](explainers/cognitive-surrender.html) | [Download](explainers/cognitive-surrender.pdf) |
+| Context management | [Read](explainers/context-management-system.html) | [Download](explainers/context-management-system.pdf) |
+
+Earlier PDF exports are preserved alongside the current ones as
+[`agent-loop-2026-08-01.pdf`](explainers/agent-loop-2026-08-01.pdf),
+[`cognitive-surrender-2026-08-01.pdf`](explainers/cognitive-surrender-2026-08-01.pdf),
+and [`context-management-system-2026-08-01.pdf`](explainers/context-management-system-2026-08-01.pdf).
 
 ## Methodology direction
 

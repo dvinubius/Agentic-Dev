@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What happens when an agent reads your prompt</title>
+<style>
+/* The brand's own subsets, not the Google-hosted builds — Google's subset ranges exclude
+   U+2190-21FF and U+2713, so `→`, `↳` and `✓` fall back to a system font from files that
+   demonstrably contain them. Built by common/scripts/build-webfonts.py; `↳` and `✓` exist
+   in neither family upstream and are composed per family. Keep the ranges in step with
+   design-system/assets/fonts.css. */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+/* Dinu Barbu — tokens. Every colour here appears in tokens.css. */
+:root{
+  --ink:#141414;
+  --paper:#FAFAFA;
+  --stone:#6E6E6E;
+  --muted-on-dark:#9A9A9A;
+  --muted-strong:#B5B5B5;
+  --hairline:#E6E6E6;
+  --hairline-on-dark:#2C2C2C;
+  --shade:#F0F0F0;
+  --inline-code:#EDEDED;
+
+  --ember:#A8500F;
+  --ember-light:#DE8A42;
+  --ember-hover:#8A420C;
+  --ember-wash:color-mix(in srgb, var(--ember) 10%, transparent);
+  --ember-wash-strong:color-mix(in srgb, var(--ember) 16%, transparent);
+
+  --mark:#DCDCDC;
+  --mark-strong:#C4C4C4;
+
+  --sans:'Space Grotesk','Helvetica Neue',sans-serif;
+  --mono:'Azeret Mono','Menlo',monospace;
+
+  --track-heading:-0.022em;
+  --track-wordmark:-0.018em;
+
+  /* Measure — ONE edge, set once on the section; everything inside inherits it.
+     rem, not em: rem resolves against the ROOT 16px, so the edge holds while the
+     character count varies a little by size. 39rem = 624px ≈ 74 characters of body. */
+  --edge:39rem;
+  --edge-wide:calc(var(--edge) * 1.5);                      /* 936px, opt-in */
+  --edge-break:calc((var(--edge) - var(--edge-wide)) / 2);  /* -156px each side */
+  --measure-mono:48em;                                      /* ≈74 characters of Azeret */
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:400;
+     -webkit-font-smoothing:antialiased;font-size:17px;line-height:1.62}
+
+/* The outer track only has to be wide enough for the breakout. */
+.col{max-width:calc(var(--edge-wide) + 112px);margin:0 auto;padding:0 56px}
+.masthead,section,footer{max-width:var(--edge);margin-left:auto;margin-right:auto}
+
+figure.wide,.cards{width:var(--edge-wide);max-width:none;
+  margin-left:var(--edge-break);margin-right:var(--edge-break)}
+/* The breakout needs --edge-wide plus the track's padding to exist. Below that the
+   negative margins push the figure off both sides of the page — which is exactly what a
+   print layout does, its page box being narrower than the render window. Under the
+   threshold a wide figure returns to the reading column. */
+@media (max-width:1080px){
+  figure.wide,.cards{width:auto;max-width:100%;margin-left:0;margin-right:0}
+}
+.fig-label,figcaption{max-width:var(--measure-mono)}
+
+/* Justify at ~55 characters and above; below that too few word-spaces absorb the stretch.
+   Words are never split — hyphens stay off, which is what makes the edge load-bearing. */
+.deck,.lede,.note,.callout p,.fignote,.close p{text-align:justify;hyphens:none;-webkit-hyphens:none}
+/* The threshold is a character count, not a viewport, so it has to be honoured at every
+   width. Below ~560px the reading column falls under ~55 characters — measured 44 at
+   375px — and justifying there is what opens the holes the rule exists to prevent. */
+@media (max-width:560px){
+  .deck,.lede,.note,.callout p,.fignote,.close p{text-align:left}
+}
+
+/* ── masthead ───────────────────────────────────────────────────────── */
+.masthead{padding:64px 0 40px}
+.wordmark{font-size:19px;font-weight:500;letter-spacing:var(--track-wordmark)}
+.wordmark b{color:var(--ember);font-weight:700}
+.masthead .deck{margin-top:24px;font-size:19px;color:var(--stone)}
+.masthead .deck strong{color:var(--ink);font-weight:500}
+/* Frontmatter: two fixed lines — what this is, then who wrote it. No sources here;
+   anything the piece cites is listed once, in the colophon. */
+.credit{font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--stone);
+        margin-top:26px;letter-spacing:.04em}
+
+/* ── sections ───────────────────────────────────────────────────────── */
+section{border-top:1px solid var(--hairline);padding:52px 0}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--stone);letter-spacing:.04em;margin-bottom:18px}
+h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:var(--track-heading);margin-top:22px}
+h1 .dot{color:var(--ember)}
+h2{font-size:32px;line-height:1.14;font-weight:500;letter-spacing:var(--track-heading);margin-bottom:16px}
+h3{font-size:19px;font-weight:500;letter-spacing:var(--track-heading)}
+p{margin-bottom:14px}
+p:last-child{margin-bottom:0}
+strong{font-weight:700}
+.lede{font-size:19px;color:var(--stone)}
+.lede strong{color:var(--ink);font-weight:500}
+.note{color:var(--stone)}
+.note strong{color:var(--ink);font-weight:500}
+/* Space Grotesk has no true italic — emphasis is weight, never a synthesised slant. */
+em{font-style:normal;font-weight:500;color:var(--ink)}
+.prose{margin:0}
+code{font-family:var(--mono);font-size:.93em;background:var(--inline-code);padding:1px 5px}
+
+/* ── figure frame ───────────────────────────────────────────────────────
+   A figure's diagram sits on --paper inside a 1px --mark-strong frame, label and caption
+   outside it. Measured against --paper: a --shade row separates at 1.09:1 while an --ink
+   row inside the same figure separates at 17.65:1 — a 16x asymmetry that makes the top of
+   an unframed figure read as part of the paragraph above it. The frame is --mark-strong
+   (1.67:1), not --hairline (1.20:1 on paper, 1.10:1 on shade — invisible against the very
+   panel it would outline). */
+figure{margin:38px 0 53px}
+figure > :not(.fig-label):not(figcaption){
+  background:var(--paper);
+  border:1px solid var(--mark-strong);
+  padding:20px;
+}
+.fig-label{font-family:var(--mono);font-size:12px;color:var(--stone);letter-spacing:.04em;margin-bottom:14px}
+figcaption{font-family:var(--mono);font-size:12px;color:var(--stone);margin-top:16px;line-height:1.55}
+/* Capped on its own, because it is prose inside a figure that may be a breakout — the
+   section's edge no longer constrains it there. 36em at 15px is ~74 characters. */
+.fignote{font-size:15px;color:var(--stone);margin-bottom:20px;max-width:36em}
+
+/* ── callout — never framed; it carries an accent rule instead, so the frame stays a
+      reliable signal that what it encloses is a figure. ─────────────────── */
+.callout{background:var(--shade);padding:26px 28px;margin-top:30px;box-shadow:inset 4px 0 0 var(--ink)}
+.callout.accent{box-shadow:inset 4px 0 0 var(--ember)}
+.callout h3{margin-bottom:10px}
+.callout p{color:var(--stone);font-size:16px}
+.callout p strong{color:var(--ink);font-weight:500}
+
+/* ── connectors ─────────────────────────────────────────────────────────
+   Drawn, never typed. A glyph arrow is locked to its font's proportions: it cannot be
+   lengthened to span a gap, it drags a text baseline along with it, and its weight is set
+   by the font rather than by the figure. A connector here is a 2px rule plus a CSS
+   triangle head, so it stretches to whatever the layout gives it and stays square. Ink,
+   which is what the brand reserves for flow arrows and arrowheads. */
+.ln{display:block;position:relative;background:var(--ink)}
+.ln.h{height:2px;width:100%}
+.ln.v{width:2px;margin:0 auto}
+.ln::after{content:"";position:absolute;border:7px solid transparent}
+.ln.h::after{right:0;top:-6px;border-left:10px solid var(--ink);border-right:0}
+.ln.h.rev::after{right:auto;left:0;border-left:0;border-right:10px solid var(--ink)}
+.ln.v::after{bottom:0;left:-6px;border-top:10px solid var(--ink);border-bottom:0}
+.ln.v.rev::after{bottom:auto;top:0;border-top:0;border-bottom:10px solid var(--ink)}
+.ln.at{position:absolute;top:0;height:100%;margin:0}
+.lb{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink);
+    letter-spacing:.03em;text-align:center;line-height:1.45}
+
+/* ── figure 1: harness and model ────────────────────────────────────────
+   Encoding — what each colour claims:
+     Ink block   = the model — the one participant that predicts text
+     Shade block = the harness — the program that does everything else
+   Neutral otherwise: the two arrows differ by direction, not colour, because they carry
+   the same kind of thing — text. Rejected: an accent on the outbound arrow, which would
+   have claimed one direction matters more. Neither does; the pairing is the point. */
+.pair{display:grid;grid-template-columns:1fr 244px 1fr;align-items:stretch;gap:0}
+.party{background:var(--shade);padding:22px 24px;align-self:stretch}
+.party.model{background:var(--ink)}
+.party .role{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone)}
+.party.model .role{color:var(--muted-on-dark)}
+.party .name{font-size:20px;font-weight:500;letter-spacing:var(--track-heading);margin-top:10px;line-height:1.2}
+.party.model .name{color:var(--paper)}
+.party hr{border:0;height:1px;background:var(--hairline);margin:16px 0}
+.party.model hr{background:var(--hairline-on-dark)}
+.party ul{list-style:none}
+.party li{font-size:15px;line-height:1.85;color:var(--ink)}
+.party.model li{color:var(--paper)}
+.party li.dim{color:var(--stone)}
+.party.model li.dim{color:var(--muted-on-dark)}
+.wires{display:flex;flex-direction:column;justify-content:center;gap:44px;padding:0 20px}
+/* Each wire carries both an orientation. The two parties stack below the breakout guard,
+   where a left/right arrow would assert a horizontal flow the layout no longer has. */
+.wire .ln.v{display:none;height:52px}
+.wire .lb{margin-bottom:10px}
+.wire.in .lb{margin-bottom:0;margin-top:10px}
+
+/* ── figure 2: building the request ─────────────────────────────────────
+   Encoding — what each colour claims:
+     Shade row = a source the harness pulls from
+     Ember rule = your latest request — the one row you author [accent, once]
+     Ink block  = the model's input, the single flat block all of it becomes
+   Ink is not a seventh source; it is the destination, and it is Ink for the same reason
+   it is Ink in figure 1 — that is what "the model sees" looks like throughout. */
+/* The fan is a real converging bundle: seven lines that actually meet at the node. The
+   SVG is stretched over the middle column with preserveAspectRatio="none", so the lines
+   track the column whatever width it gets, and vector-effect="non-scaling-stroke" keeps
+   the 1px weight from stretching with it. Endpoints are stated as (i+0.5)/7 of the
+   height; against the real row centres, gaps included, that is under 1px of error. */
+.fan{display:grid;grid-template-columns:1fr 118px 246px 98px;align-items:stretch;gap:0}
+.fanmid{position:relative}
+.fanmid svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.fanmid .ln.v,.fanmid .lb,.fanout .ln.v{display:none}
+.fanout{align-self:center;padding-left:18px}
+.fanout .lb{margin-top:10px}
+.sources{display:flex;flex-direction:column;gap:2px}
+.src{background:var(--shade);display:flex;align-items:center;gap:16px;padding:12px 18px}
+.src .n{font-family:var(--mono);font-size:12px;color:var(--stone);width:12px;flex:none}
+.src .l{font-size:15px}
+.src.you{box-shadow:inset 4px 0 0 var(--ember);padding-left:14px}
+.src.you .l{font-weight:500}
+.src.you .n{color:var(--ember)}
+.request{background:var(--ink);padding:24px;text-align:center;align-self:center}
+.request .role{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-on-dark)}
+.request .big{font-size:24px;font-weight:500;letter-spacing:var(--track-heading);color:var(--paper);margin-top:12px}
+.request .kind{font-size:14px;color:var(--muted-on-dark);margin-top:8px}
+
+/* ── figure 3: the seven labels ─────────────────────────────────────────
+   Encoding — what each colour claims:
+     Mark band  = the boundary the table is about: rows 4-7 are not four slots, they are
+                  one conversation
+     Ember wash = your latest message, the newest line of that conversation [accent, once]
+   Rows 1-3 and 5-6 are plain: they differ by their number and their text, not by colour.
+   Rejected: colouring each of the seven rows, which spent the accent seven times and made
+   the one distinction that matters — inside the conversation or outside it — invisible. */
+.tbl{display:flex;flex-direction:column}
+.tbl .thead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+     background:var(--shade);padding:12px 20px;font-family:var(--mono);font-size:11.5px;
+     color:var(--stone);letter-spacing:.04em}
+.tbl .row{display:flex;gap:18px;padding:15px 20px;border-bottom:1px solid var(--hairline)}
+.tbl .row:last-child{border-bottom:0}
+.tbl .n{font-family:var(--mono);font-size:14px;color:var(--stone);width:16px;flex:none;padding-top:2px}
+.tbl .t{display:block;font-size:16px;font-weight:500}
+.tbl .d{display:block;font-size:14.5px;color:var(--stone);margin-top:3px;line-height:1.5}
+.tbl .band{background:var(--mark);padding:10px 20px;font-family:var(--mono);font-size:11.5px;
+     letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+.tbl .row.you{background:var(--ember-wash)}
+.tbl .row.you .n{color:var(--ember)}
+.chip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+      padding:2px 7px;margin-left:9px;vertical-align:2px;background:var(--mark);color:var(--ink)}
+.chip.accent{background:var(--ember-wash-strong);color:var(--ember)}
+
+/* ── figure 4: the loop ─────────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Ink step    = the model — the one step of the four where it acts
+     Shade steps = the harness — everything else
+     Ember rule  = you — the two points a human touches the loop, entry and exit
+   Neutral by default: the four steps differ by position and number, not by colour. The
+   exit block is Ink because it is the model's own text, and its rule is Ember Light — the
+   pair rule holds inside figures too. Rejected: one colour per step, which spent the
+   accent four times and left the focus nowhere in particular. */
+/* The loop is routed, not implied. Its path is drawn with the borders of one box —
+   down the right of step 04, across the bottom below the exit, and back up into step 01 —
+   so it stays a single continuous line at any width instead of three arrows the reader
+   has to join up. The step grid's fr units fix the geometry: each step is 22.03% and each
+   arrow gap 3.97%, which puts step 01's centre at 11%, step 02's at 37% and step 04's at
+   89% — the three percentages the routed path and the branch are pinned to. */
+.entry,.exit{padding:16px 20px;font-size:17px;font-weight:500;letter-spacing:-.015em}
+.entry{background:var(--shade);box-shadow:inset 4px 0 0 var(--ember);width:34%}
+.exit{background:var(--ink);color:var(--paper);box-shadow:inset -4px 0 0 var(--ember-light);
+      margin:92px 0 0 26%;width:38%}
+.exit .s{display:block;font-size:14px;font-weight:400;color:var(--muted-on-dark);margin-top:4px}
+.drop{height:34px;position:relative}
+.drop .ln{left:11%}
+.steps{display:grid;grid-template-columns:1fr .18fr 1fr .18fr 1fr .18fr 1fr;align-items:stretch;gap:0}
+/* flow-root, not just relative: the exit box's 92px top margin would otherwise collapse
+   through this element and carry its top edge down with it — taking the absolutely
+   positioned path and branch, which are pinned to that edge, along for the ride. */
+.below{position:relative;display:flow-root;padding-bottom:64px}
+/* Dashed, because this is the conditional path: it is taken only on the turn where step
+   02 asks for nothing. The loop itself is solid — it is what happens every other turn. */
+.exitline{position:absolute;left:37%;top:0;height:78px;border-left:2px dashed var(--ink)}
+.exitline::after{content:"";position:absolute;bottom:-2px;left:-7px;
+  border:7px solid transparent;border-top:10px solid var(--ink);border-bottom:0}
+.loopback{position:absolute;left:11%;right:11%;top:0;bottom:30px;
+  border:2px solid var(--ink);border-top:0}
+.loopback::after{content:"";position:absolute;top:-1px;left:-8px;
+  border:7px solid transparent;border-bottom:10px solid var(--ink);border-top:0}
+.looplab{position:absolute;left:0;right:0;bottom:0;text-align:center;font-family:var(--mono);
+  font-size:11.5px;color:var(--stone);letter-spacing:.04em}
+.backline,.rt{display:none}
+.step{background:var(--shade);padding:16px 18px}
+.step.model{background:var(--ink)}
+.step .n{font-family:var(--mono);font-size:12px;color:var(--stone)}
+.step.model .n{color:var(--muted-on-dark)}
+.step .t{font-size:17px;font-weight:500;line-height:1.22;letter-spacing:var(--track-heading);margin-top:16px}
+.step.model .t{color:var(--paper)}
+.step .s{font-size:13.5px;color:var(--stone);margin-top:5px;line-height:1.4}
+.step.model .s{color:var(--muted-on-dark)}
+.ar{display:flex;align-items:center;justify-content:center;padding:0 7px}
+.ar .ln.v{display:none}
+.branch{position:absolute;left:calc(37% + 16px);top:24px;font-family:var(--mono);
+        font-size:11.5px;color:var(--stone);letter-spacing:.04em;line-height:1.5}
+.branch b{color:var(--ink);font-weight:400}
+
+/* ── figure 5: the growing request ──────────────────────────────────────
+   Encoding — what each colour claims:
+     Mark bar   = text the model has already been sent at least once
+     Ember bar  = the only genuinely new text in this request — the tool result the
+                  harness just handed back [accent, once]
+   One claim, stated three times across the three turns, because the claim is that it
+   recurs. Rejected: a per-turn hue, which would have made the turns the subject; the
+   subject is the single fresh row at the bottom of each. */
+.stacks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:start}
+.stack{background:var(--shade);padding:18px 18px 20px}
+.stack .hd{font-family:var(--mono);font-size:11.5px;color:var(--stone);letter-spacing:.04em}
+.stack .rows{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+.bar{background:var(--mark);padding:8px 11px;font-family:var(--mono);font-size:12px;color:var(--ink);line-height:1.4}
+.bar.fresh{background:var(--ember-wash-strong);box-shadow:inset 3px 0 0 var(--ember);padding-left:8px}
+
+/* ── figure 6: one request, fully expanded ──────────────────────────────
+   Encoding — what each colour claims:
+     Ink rule    = the stable prefix — byte-for-byte identical every turn
+     Mark rule   = earlier conversation — frozen once written, carried forward
+     Ember wash  = appended this turn — the only new text [accent, once]
+   Three states of one thing (a row of the request), so they are one value ramp plus the
+   accent on the single state the figure is about. Rejected: colouring the four turns,
+   which would have claimed the turns differ in kind. They do not — that is the point. */
+.legend{display:flex;flex-wrap:wrap;gap:10px 28px;margin-bottom:20px}
+.legend div{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--stone)}
+.legend i{display:block;width:11px;height:15px;background:var(--shade);flex:none}
+.legend i.stable{box-shadow:inset 3px 0 0 var(--ink)}
+.legend i.frozen{box-shadow:inset 3px 0 0 var(--mark-strong)}
+.legend i.new{background:var(--ember-wash);box-shadow:inset 3px 0 0 var(--ember)}
+.turns{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:start}
+.turn{background:var(--shade);padding:16px 14px 18px}
+.turn .hd{display:flex;align-items:baseline;gap:8px}
+.turn .hd .n{font-family:var(--mono);font-size:15px;color:var(--stone)}
+.turn .hd .t{font-size:15px;font-weight:500;letter-spacing:-.015em}
+.turn .hn{font-size:12px;line-height:1.42;color:var(--stone);margin-top:6px}
+.turn .rows{margin-top:13px;display:flex;flex-direction:column;gap:6px}
+.r{background:var(--paper);padding:8px 10px;font-size:12px;line-height:1.4}
+.r .k{font-family:var(--mono);font-size:11.5px}
+.r.stable{box-shadow:inset 3px 0 0 var(--ink);padding-left:7px}
+.r.frozen{box-shadow:inset 3px 0 0 var(--mark-strong);padding-left:7px}
+.r.new{box-shadow:inset 3px 0 0 var(--ember);padding-left:7px;background:var(--ember-wash)}
+.r .tag{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;
+        text-transform:uppercase;background:var(--ember-wash-strong);color:var(--ember);
+        padding:1px 5px;margin-right:6px;vertical-align:1px}
+.r .enters{display:block;margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--ember)}
+.cdiv{display:flex;align-items:center;gap:9px;margin:13px 0 0;font-family:var(--mono);
+      font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone)}
+.cdiv::after{content:"";flex:1;height:1px;background:var(--mark-strong)}
+.replies{margin-top:12px;font-family:var(--mono);font-size:11px;line-height:1.5;color:var(--stone)}
+
+/* ── the closing row ────────────────────────────────────────────────────
+   The fixed code ramp: Paper for the emphasized line, Muted on dark for the note, and
+   Ember Light for the one line that matters — the model's own words. */
+.close{margin-top:30px}
+.close .hd{display:flex;align-items:baseline;gap:10px;margin-bottom:16px}
+.close .hd .tick{color:var(--ember);font-family:var(--mono);font-size:15px}
+.code{background:var(--ink);color:var(--muted-strong);font-family:var(--mono);font-size:13px;
+      line-height:1.75;padding:22px 24px;white-space:pre}
+/* Below the column width the block no longer fits; it is the one element allowed its own
+   horizontal scroll, since wrapping it would break the alignment that carries the point. */
+@media (max-width:900px){.code{overflow-x:auto}}
+.code .k{color:var(--paper)}
+.code .said{color:var(--ember-light)}
+.code .c{color:var(--muted-on-dark)}
+.close p{margin-top:18px;color:var(--stone)}
+.close p strong{color:var(--ink);font-weight:500}
+
+/* ── cards ──────────────────────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;margin-top:32px}
+.cards div{background:var(--shade);padding:20px 22px}
+.cards h3{font-size:16px;margin-bottom:8px}
+.cards p{font-size:15px;line-height:1.5;color:var(--stone);margin:0}
+
+/* ── figure 7: the cache bar ────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Mark segment  = tokens already computed, served from cache
+     Ember segment = the new tail the model actually has to read [accent, once]
+   The dashed Ember edge is the boundary itself, not a third category. Width carries the
+   proportion; colour carries only cached-versus-fresh. */
+/* The bar carries the proportion and nothing else: the tail is 20% of the prefix, so at
+   any width it is far too narrow to hold a label without lying about its own size. The
+   key below names both segments instead — which also keeps the ratio readable when the
+   figure sits in the reading column rather than a breakout. */
+.cache{display:flex;height:64px}
+.cache .prefix{flex:5;background:var(--mark)}
+.cache .tail{flex:1;background:var(--ember-wash-strong);border-left:2px dashed var(--ember)}
+.ckey{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin-top:18px}
+.ckey div{display:flex;gap:11px}
+.ckey i{display:block;width:12px;height:16px;flex:none;margin-top:3px;background:var(--mark)}
+.ckey .new i{background:var(--ember-wash-strong);box-shadow:inset 2px 0 0 var(--ember)}
+.ckey .t{display:block;font-size:15px;font-weight:500;letter-spacing:-.01em}
+.ckey .new .t{color:var(--ember)}
+.ckey .d{display:block;font-size:13.5px;color:var(--stone);line-height:1.45;margin-top:2px}
+
+/* ── colophon ────────────────────────────────────────────────────────
+   Two fixed lines — identity, then signature. A piece that cites something lists its
+   sources here, below those two lines, and nowhere else; this one cites nothing. */
+footer{border-top:1px solid var(--hairline);padding:26px 0 72px;font-family:var(--mono);
+       font-size:12px;color:var(--stone);line-height:1.9}
+footer b{color:var(--ember);font-weight:400}
+
+/* Brand link: ink text, 1px ember bottom border. Never underlined. */
+.qlink{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ember);padding-bottom:1px}
+.qlink:hover{color:var(--ember-hover);border-bottom-color:var(--ember-hover)}
+
+/* Below the breakout guard a wide figure loses its extra 312px and returns to the reading
+   column, so every horizontal arrangement composed for the breakout turns vertical here —
+   and each connector turns with it, or it would assert a direction the layout no longer
+   has. This is the one breakpoint that matters for the wide figures; 820px below only
+   handles what is still horizontal at that point. */
+@media (max-width:1080px){
+  .turns{grid-template-columns:1fr 1fr}
+  .pair,.fan{grid-template-columns:1fr}
+  .wires{flex-direction:row;justify-content:space-around;gap:0;padding:16px 0}
+  .wire .ln.h{display:none}
+  .wire .ln.v{display:block}
+  .fanmid{padding:14px 0 12px}
+  .fanmid svg{display:none}
+  .fanmid .ln.v,.fanout .ln.v{display:block;height:34px}
+  .fanmid .ln.h,.fanout .ln.h{display:none}
+  /* Stacked, the request node is no longer the end of a left-to-right run, so the hop to
+     the model has to be drawn below it — same element, same label, turned vertical. */
+  .fanout{align-self:auto;padding:16px 0 0}
+  .fanmid .lb,.fanout .lb{display:block;margin-top:10px;color:var(--stone)}
+  /* Stacked, the figure keeps both routed paths — they are what make it a loop rather
+     than a list. The steps give up 68px on the right so the two runs have lanes to
+     travel in: the branch takes the inner lane, the loop the outer one.
+
+     The rows are the geometry. Each path piece is a grid item pinned to the row of the
+     step it leaves or enters, aligned to that row's own half, so a horizontal always
+     meets a box at its vertical centre without anyone measuring a box. The four step
+     rows are 1fr, which makes them equal, so the two half-height pieces line up.
+
+     One crossing is unavoidable: the loop runs bottom-to-top and the branch top-to-
+     bottom through the same gutter, so whichever lane is outer, one path's horizontal
+     must cross the other's vertical. It is placed on the loop's stub over the branch's
+     dashed run — solid over dashed reads as passing over, and it keeps the loop's long
+     vertical, the spine of the figure, unbroken. */
+  /* One grid for the whole figure, so a label can sit in a lane at the row of the step
+     its arrow leaves. .steps and .below become display:contents, which dissolves the two
+     wrappers and hands their children straight to this grid — that is what lets the two
+     labels be placed by row without duplicating their text for this breakpoint.
+
+     Four columns: the steps, a label lane, then one narrow lane per vertical run. Both
+     labels live in the label lane, in the bottom half of their step's row, directly under
+     the horizontal stub they name. Neither vertical passes through that lane. */
+  .loop{display:grid;gap:0;
+        grid-template-columns:1fr 120px 16px 16px;
+        grid-template-rows:auto auto 1fr auto 1fr auto 1fr auto 1fr auto}
+  .steps,.below{display:contents}
+  .entry{grid-row:1}
+  .drop{grid-row:2}
+  /* Full margin, not just margin-top — the wide rule's 26% left indent would survive. */
+  .exit{grid-row:10;margin:34px 0 0}
+  .entry,.exit{grid-column:1/5;width:auto}
+  .steps>div{grid-column:1}
+  .steps>div:nth-child(1){grid-row:3} .steps>div:nth-child(2){grid-row:4}
+  .steps>div:nth-child(3){grid-row:5} .steps>div:nth-child(4){grid-row:6}
+  .steps>div:nth-child(5){grid-row:7} .steps>div:nth-child(6){grid-row:8}
+  .steps>div:nth-child(7){grid-row:9}
+  /* The lane costs the boxes width, so the step type gives some back: at 17px "Assemble
+     the" needs 99px against the 98px of content a step has here, and breaks to three
+     lines for one pixel. */
+  .step{padding:14px 12px}
+  .step .t{font-size:16px}
+  .ar{padding:12px 0}
+  .ar .ln.h{display:none}
+  .ar .ln.v{display:block;height:30px}
+  .drop{height:26px;position:relative}
+  .drop .ln{left:0;right:0;margin:0 auto}
+  .rt{display:block;position:relative}
+  /* loop — out of step 04, up the outer lane, back into step 01 */
+  .loop-top{grid-column:2/5;grid-row:3;align-self:end;height:50%;
+    border-top:2px solid var(--ink);border-right:2px solid var(--ink)}
+  .loop-top::after{content:"";position:absolute;left:-2px;top:-6px;
+    border:7px solid transparent;border-right:10px solid var(--ink);border-left:0}
+  .loop-mid{grid-column:4;grid-row:4/9;border-right:2px solid var(--ink)}
+  .loop-bot{grid-column:2/5;grid-row:9;align-self:start;height:50%;
+    border-bottom:2px solid var(--ink);border-right:2px solid var(--ink)}
+  /* branch — out of step 02, down the inner lane, onto the final answer. The run stops
+     24px short of its row's end and the head is 10px tall, so the tip lands exactly on
+     the exit's top edge — the 34px there is the exit's own top margin. */
+  .br-top{grid-column:2/4;grid-row:5;align-self:end;height:50%;
+    border-top:2px dashed var(--ink);border-right:2px dashed var(--ink)}
+  .br-mid{grid-column:3;grid-row:6/10;align-self:start;height:calc(100% + 24px);
+    border-right:2px dashed var(--ink)}
+  .br-mid::after{content:"";position:absolute;bottom:-10px;right:-7px;
+    border:7px solid transparent;border-top:10px solid var(--ink);border-bottom:0}
+  .loopback,.exitline,.backline{display:none}
+  /* The lane is sized to hold "loop — re-send" whole, or the line breaks on the hyphen
+     inside re-send and reads as a hyphenated word rather than a phrase. Azeret Mono
+     advances 0.696em per character — measured, not the 0.65 quoted elsewhere — so at 11px
+     the phrase is 107px against 112px of content. The tracking has to go: .04em adds 6px
+     across those 14 characters, which alone put it over. */
+  .branch,.looplab{position:static;grid-column:2;align-self:end;text-align:left;
+    margin:0;padding-left:8px;font-size:11px;letter-spacing:0}
+  .branch{grid-row:5}
+  .looplab{grid-row:9}
+}
+@media (max-width:820px){
+  body{font-size:16px}
+  .col{padding:0 22px}
+  h1{font-size:34px}
+  h2{font-size:25px}
+  .masthead .deck,.lede{font-size:17px}
+  .stacks,.turns,.cards{grid-template-columns:1fr}
+  /* The bar stays horizontal at every width — the 1:0.2 ratio is the whole claim, and
+     stacking it would restate the ratio as height, which reads as a different quantity. */
+  .ckey{grid-template-columns:1fr}
+  section{padding:40px 0}
+  .masthead{padding:44px 0 32px}
+}
+</style></head>
+<body>
+
+<div class="col">
+
+  <header class="masthead">
+    <div class="wordmark"><b>[</b> Dinu Barbu <b>]</b></div>
+    <h1>What happens when an agent reads your prompt<span class="dot">.</span></h1>
+    <p class="deck">Six sections, one idea: an agent is a program passing text to a text predictor,
+      over and over. Everything that feels mysterious about it &mdash; <strong>memory, tools, context
+      limits, cost</strong> &mdash; falls out of that one arrangement.</p>
+    <div class="credit">// an explainer<br><br>
+      &#8627; dvinubius &middot; <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a></div>
+  </header>
+
+  <!-- ═══ 1 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">01 / the mental model &middot; keep this one</div>
+    <h2>What an agent actually is</h2>
+    <div class="prose">
+      <p class="lede">An agent is a conversation between a <strong>harness</strong> &mdash; the
+        orchestrator program &mdash; and a <strong>model</strong>, which is a text predictor. The
+        harness hands over a big blob of text; the model hands back text. That exchange is the whole
+        game.</p>
+    </div>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 1 &middot; the two participants, and the only two things that cross between them</div>
+      <div class="pair">
+        <div class="party">
+          <div class="role">The harness</div>
+          <div class="name">The orchestrator program</div>
+          <hr>
+          <ul>
+            <li>holds the memory</li>
+            <li>owns the tools</li>
+            <li>runs the loop</li>
+          </ul>
+        </div>
+        <div class="wires">
+          <div class="wire out">
+            <span class="lb">context</span>
+            <span class="ln h"></span><span class="ln v"></span>
+          </div>
+          <div class="wire in">
+            <span class="ln h rev"></span><span class="ln v rev"></span>
+            <span class="lb">text + tool calls</span>
+          </div>
+        </div>
+        <div class="party model">
+          <div class="role">The model</div>
+          <div class="name">A text predictor</div>
+          <hr>
+          <ul>
+            <li>reads text in</li>
+            <li>writes text out</li>
+            <li class="dim">no memory &middot; no hands</li>
+          </ul>
+        </div>
+      </div>
+      <figcaption>ink is the model, shade is the harness &mdash; and that holds for every figure
+        below</figcaption>
+    </figure>
+
+    <div class="prose">
+      <p class="note">Everything else here is detail on those two arrows: what is <em>in</em> the
+        context the harness sends, and what the harness <em>does</em> with the text it gets back.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 2 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">02 / the first arrow &middot; what the model is handed</div>
+    <h2>Context is everything the model sees</h2>
+    <div class="prose">
+      <p class="lede">The model has no window into your machine. Before every call the harness
+        assembles one request &mdash; a single stack of text. If something is not in this stack, the
+        model does not know it exists.</p>
+    </div>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 2 &middot; building the request</div>
+      <div>
+        <div class="fignote">The harness pulls from several places and flattens them into one block
+          of text. Read these as <em>labels for what tends to go in</em>, not as seven tidy separate
+          boxes &mdash; the table below shows how much they overlap.</div>
+        <div class="fan">
+        <div class="sources">
+          <div class="src"><span class="n">1</span><span class="l">System &amp; developer instructions</span></div>
+          <div class="src"><span class="n">2</span><span class="l">Tool definitions</span></div>
+          <div class="src"><span class="n">3</span><span class="l">Project rules &mdash; AGENTS.md</span></div>
+          <div class="src"><span class="n">4</span><span class="l">The conversation so far</span></div>
+          <div class="src"><span class="n">5</span><span class="l">File snippets &amp; repo context</span></div>
+          <div class="src"><span class="n">6</span><span class="l">Previous tool results</span></div>
+          <div class="src you"><span class="n">7</span><span class="l">Your latest request</span></div>
+        </div>
+        <div class="fanmid">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <g stroke="#C4C4C4" stroke-width="1" fill="none" vector-effect="non-scaling-stroke">
+              <path d="M0 7.14 L100 50" vector-effect="non-scaling-stroke"/>
+              <path d="M0 21.43 L100 50" vector-effect="non-scaling-stroke"/>
+              <path d="M0 35.71 L100 50" vector-effect="non-scaling-stroke"/>
+              <path d="M0 50 L100 50" vector-effect="non-scaling-stroke"/>
+              <path d="M0 64.29 L100 50" vector-effect="non-scaling-stroke"/>
+              <path d="M0 78.57 L100 50" vector-effect="non-scaling-stroke"/>
+            </g>
+            <path d="M0 92.86 L100 50" stroke="#A8500F" stroke-width="1.5" fill="none" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <span class="ln v"></span>
+          <span class="lb">flattened, in order, into</span>
+        </div>
+        <div class="request">
+          <div class="role">The harness builds</div>
+          <div class="big">One model request</div>
+          <div class="kind">one flat block of text</div>
+        </div>
+        <div class="fanout">
+          <span class="ln h"></span><span class="ln v"></span>
+          <span class="lb">to LLM</span>
+        </div>
+        </div>
+      </div>
+      <figcaption>the marked row is the only one you author &mdash; everything above it was put
+        there by the harness or by an earlier turn</figcaption>
+    </figure>
+
+    <div class="prose">
+      <p class="note">Here is what each label points at, and where the seven stop being seven.</p>
+    </div>
+
+    <figure>
+      <div class="fig-label">fig. 3 &middot; the seven labels, and the line that runs through them</div>
+      <div class="tbl">
+        <div class="thead"><span>one model request</span><span>assembled fresh each turn</span></div>
+        <div class="row"><span class="n">1</span>
+          <span><span class="t">System &amp; developer instructions</span>
+            <span class="d">the model's standing rules &mdash; how to behave, when to stop</span></span></div>
+        <div class="row"><span class="n">2</span>
+          <span><span class="t">Tool definitions</span>
+            <span class="d">the menu of actions it can request &mdash; read, search, run, edit</span></span></div>
+        <div class="row"><span class="n">3</span>
+          <span><span class="t">Project rules <code>AGENTS.md</code></span>
+            <span class="d">your repo's conventions, do's and don'ts</span></span></div>
+        <div class="band">&#8595; items 4&ndash;7 are really one thing: the conversation</div>
+        <div class="row"><span class="n">4</span>
+          <span><span class="t">The conversation so far</span>
+            <span class="d">the whole back-and-forth this session &mdash; and it already <em>contains</em> 5 and 6</span></span></div>
+        <div class="row"><span class="n">5</span>
+          <span><span class="t">File snippets &amp; repo context<span class="chip">part of #4</span></span>
+            <span class="d">code the model pulled &mdash; it arrived earlier as a tool result</span></span></div>
+        <div class="row"><span class="n">6</span>
+          <span><span class="t">Previous tool results<span class="chip">part of #4</span></span>
+            <span class="d">outputs, errors and diffs from earlier tool runs</span></span></div>
+        <div class="row you"><span class="n">7</span>
+          <span><span class="t">Your latest message<span class="chip accent">newest line of #4</span></span>
+            <span class="d">the new thing you just asked for</span></span></div>
+      </div>
+      <figcaption>the band is the real boundary in this table &mdash; above it, three separate
+        things; below it, one growing list</figcaption>
+    </figure>
+
+    <div class="callout">
+      <h3>These labels overlap. They are a simplification, not seven disjoint boxes.</h3>
+      <p>Only 1&ndash;3 are truly separate. Everything else is one conversation: #4 is the whole
+        back-and-forth, which already holds the file snippets (#5) and the tool results (#6) the
+        model pulled, with your latest message (#7) as its newest line. They are split out only to
+        name what tends to go in. Section 05 shows the real, non-overlapping layout &mdash; stable
+        prefix on top, one ordered conversation below.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 3 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">03 / the signature move &middot; the loop</div>
+    <h2>One prompt becomes many turns</h2>
+    <div class="prose">
+      <p class="lede">The reply usually is not an answer yet &mdash; it is a request to <em>do</em>
+        something. So the harness acts, folds the result back into the context, and asks again.
+        Around and around, until the model has nothing left to ask for.</p>
+    </div>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 4 &middot; the loop, and the two points you touch it</div>
+      <div class="loop">
+        <div class="entry">You ask something</div>
+        <div class="drop"><span class="ln v at"></span></div>
+        <div class="steps">
+          <div class="step">
+            <div class="n">01</div>
+            <div class="t">Assemble the context</div>
+            <div class="s">harness</div>
+          </div>
+          <div class="ar"><span class="ln h"></span><span class="ln v"></span></div>
+          <div class="step model">
+            <div class="n">02</div>
+            <div class="t">Model emits</div>
+            <div class="s">text + tool calls</div>
+          </div>
+          <div class="ar"><span class="ln h"></span><span class="ln v"></span></div>
+          <div class="step">
+            <div class="n">03</div>
+            <div class="t">Harness runs the tools</div>
+            <div class="s">the real work happens here</div>
+          </div>
+          <div class="ar"><span class="ln h"></span><span class="ln v"></span></div>
+          <div class="step">
+            <div class="n">04</div>
+            <div class="t">Append the results</div>
+            <div class="s">harness</div>
+          </div>
+          <!-- Routed paths for the stacked variant, drawn in two lanes to the right of the
+               steps. Each piece is a grid item, so it takes its geometry from the rows the
+               steps actually occupy rather than from percentages guessed in advance. -->
+          <i class="rt loop-top"></i>
+          <i class="rt loop-mid"></i>
+          <i class="rt loop-bot"></i>
+          <i class="rt br-top"></i>
+          <i class="rt br-mid"></i>
+        </div>
+        <div class="below">
+          <div class="loopback"></div>
+          <div class="branch">no tools<br>requested?</div>
+          <div class="exitline"></div>
+          <div class="exit">Final answer<span class="s">back to you &mdash; the loop stops</span></div>
+          <div class="backline"><span class="ln h rev"></span></div>
+          <div class="looplab">loop &mdash; re-send everything, ask again</div>
+        </div>
+      </div>
+      <figcaption>the two marked rows are where a human touches this &mdash; you open the loop and
+        you receive what closes it; the four steps between them run without you</figcaption>
+    </figure>
+
+    <div class="cards">
+      <div>
+        <h3>Steps 1 and 4 are bookkeeping</h3>
+        <p>The harness builds the text going in, and stitches results back in after.</p>
+      </div>
+      <div>
+        <h3>Step 2 is the only model call</h3>
+        <p>It thinks once, then yields control. It cannot act on its own.</p>
+      </div>
+      <div>
+        <h3>Step 3 is the real work</h3>
+        <p>Files get read, tests get run, edits get applied &mdash; all by the harness.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ 4 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">04 / the detail that makes it click</div>
+    <h2>Memory is the harness re-feeding the whole transcript</h2>
+    <div class="prose">
+      <p class="lede">Because the model forgets everything between calls, the harness cannot just
+        send the new result. It re-sends the <em>entire growing history</em> every single turn. Each
+        call is bigger than the last.</p>
+    </div>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 5 &middot; what three consecutive turns actually send</div>
+      <div class="stacks">
+        <div class="stack">
+          <div class="hd">turn 1 sends</div>
+          <div class="rows">
+            <div class="bar">your prompt</div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="hd">turn 2 sends</div>
+          <div class="rows">
+            <div class="bar">your prompt</div>
+            <div class="bar">turn-1 reply</div>
+            <div class="bar fresh">turn-1 tool result</div>
+          </div>
+        </div>
+        <div class="stack">
+          <div class="hd">turn 3 sends</div>
+          <div class="rows">
+            <div class="bar">your prompt</div>
+            <div class="bar">turn-1 reply</div>
+            <div class="bar">turn-1 tool result</div>
+            <div class="bar">turn-2 reply</div>
+            <div class="bar fresh">turn-2 tool result</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>the marked bar in each turn is the only genuinely new text in that request &mdash;
+        the tool result the harness had just handed back</figcaption>
+    </figure>
+
+    <div class="callout">
+      <p>This is why agents have a <strong>context limit</strong>, and why long sessions slow down or
+        start forgetting early details. The transcript eventually gets too big to re-send in full,
+        so the harness has to trim it or summarize it.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 5 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">05 / look closer &middot; one request, fully expanded</div>
+    <h2>What each turn actually sends</h2>
+    <div class="prose">
+      <p class="lede">The seven sources are not seven floating slots. The harness lays them out as
+        <strong>one ordered sequence</strong>: the stable three at the top, then the conversation
+        &mdash; and the conversation absorbs file snippets and tool results as it grows.</p>
+      <p class="note">Below is one full cycle of the request <code>Add request logging to the
+        server</code> &mdash; four model calls, then a final answer. Watch it grow by appending only.
+        Earlier rows never change.</p>
+    </div>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 6 &middot; four turns of one cycle, row by row</div>
+      <div>
+        <div class="legend">
+          <div><i class="stable"></i>Stable prefix &mdash; identical every turn</div>
+          <div><i class="frozen"></i>Earlier conversation &mdash; frozen, carried forward</div>
+          <div><i class="new"></i>Appended this turn &mdash; the new text</div>
+        </div>
+        <div class="turns">
+
+          <div class="turn">
+            <div class="hd"><span class="n">1</span><span class="t">Turn 1 sends</span></div>
+            <div class="hn">First call &mdash; stable rules plus your prompt.</div>
+            <div class="rows">
+              <div class="r stable">1 &middot; System &amp; developer instructions</div>
+              <div class="r stable">2 &middot; Tool definitions</div>
+              <div class="r stable">3 &middot; Project rules &middot; AGENTS.md</div>
+            </div>
+            <div class="cdiv">conversation &#8595;</div>
+            <div class="rows">
+              <div class="r new"><span class="tag">new</span>4 &middot; You: <span class="k">&ldquo;Add request logging&rdquo;</span></div>
+            </div>
+            <div class="replies">&#8594; model replies:<br>read(server.py)</div>
+          </div>
+
+          <div class="turn">
+            <div class="hd"><span class="n">2</span><span class="t">Turn 2 sends</span></div>
+            <div class="hn">Rows 1&ndash;4 unchanged &middot; 5&ndash;6 appended.</div>
+            <div class="rows">
+              <div class="r stable">1 &middot; System &amp; developer instructions</div>
+              <div class="r stable">2 &middot; Tool definitions</div>
+              <div class="r stable">3 &middot; Project rules &middot; AGENTS.md</div>
+            </div>
+            <div class="cdiv">conversation &#8595;</div>
+            <div class="rows">
+              <div class="r frozen">4 &middot; You: <span class="k">&ldquo;Add request logging&rdquo;</span></div>
+              <div class="r new"><span class="tag">new</span>5 &middot; Assistant: <span class="k">read(server.py)</span></div>
+              <div class="r new"><span class="tag">new</span>6 &middot; Tool result: <span class="k">server.py</span>
+                <span class="enters">&#8592; the file snippet enters here</span></div>
+            </div>
+            <div class="replies">&#8594; model replies:<br>edit(server.py)</div>
+          </div>
+
+          <div class="turn">
+            <div class="hd"><span class="n">3</span><span class="t">Turn 3 sends</span></div>
+            <div class="hn">Rows 1&ndash;6 unchanged &middot; 7&ndash;8 appended.</div>
+            <div class="rows">
+              <div class="r stable">1 &middot; System &amp; developer instructions</div>
+              <div class="r stable">2 &middot; Tool definitions</div>
+              <div class="r stable">3 &middot; Project rules &middot; AGENTS.md</div>
+            </div>
+            <div class="cdiv">conversation &#8595;</div>
+            <div class="rows">
+              <div class="r frozen">4 &middot; You: <span class="k">&ldquo;Add request logging&rdquo;</span></div>
+              <div class="r frozen">5 &middot; Assistant: <span class="k">read(server.py)</span></div>
+              <div class="r frozen">6 &middot; Tool result: <span class="k">server.py</span></div>
+              <div class="r new"><span class="tag">new</span>7 &middot; Assistant: <span class="k">edit(server.py)</span></div>
+              <div class="r new"><span class="tag">new</span>8 &middot; Tool result: patch applied
+                <span class="enters">&#8592; the edit result enters here</span></div>
+            </div>
+            <div class="replies">&#8594; model replies:<br>run(pytest)</div>
+          </div>
+
+          <div class="turn">
+            <div class="hd"><span class="n">4</span><span class="t">Turn 4 sends</span></div>
+            <div class="hn">Rows 1&ndash;8 unchanged &middot; 9&ndash;10 appended.</div>
+            <div class="rows">
+              <div class="r stable">1 &middot; System &amp; developer instructions</div>
+              <div class="r stable">2 &middot; Tool definitions</div>
+              <div class="r stable">3 &middot; Project rules &middot; AGENTS.md</div>
+            </div>
+            <div class="cdiv">conversation &#8595;</div>
+            <div class="rows">
+              <div class="r frozen">4 &middot; You: <span class="k">&ldquo;Add request logging&rdquo;</span></div>
+              <div class="r frozen">5 &middot; Assistant: <span class="k">read(server.py)</span></div>
+              <div class="r frozen">6 &middot; Tool result: <span class="k">server.py</span></div>
+              <div class="r frozen">7 &middot; Assistant: <span class="k">edit(server.py)</span></div>
+              <div class="r frozen">8 &middot; Tool result: patch applied</div>
+              <div class="r new"><span class="tag">new</span>9 &middot; Assistant: <span class="k">run(pytest)</span></div>
+              <div class="r new"><span class="tag">new</span>10 &middot; Tool result: 12 passed
+                <span class="enters">&#8592; the test output enters here</span></div>
+            </div>
+            <div class="replies">&#8594; model replies: final answer,<br>no tool call</div>
+          </div>
+
+        </div>
+      </div>
+      <figcaption>every row that has been written once keeps its exact position and its exact bytes
+        &mdash; the request only ever grows at the bottom</figcaption>
+    </figure>
+
+    <div class="close">
+      <div class="hd"><span class="tick">&#8627;</span><h3>Turn 4's reply is what closes the cycle</h3></div>
+      <div class="code">11 &middot; <span class="k">Assistant (final):</span> <span class="said">&ldquo;Added logging middleware &mdash; 12 tests pass.&rdquo;</span>
+
+<span class="c">// no tool call &#8594; the harness stops looping
+// and hands this back to you</span></div>
+      <p class="note">Row 11 is the model's reply to turn 4. It is not <em>sent</em> in another
+        request; it is the output that ends the loop. Whatever you type next appends as
+        <strong>row 12</strong>, and the harness fires turn 5 on top of all eleven rows &mdash; the
+        same cycle, continued.</p>
+    </div>
+
+    <div class="callout accent">
+      <h3>So the conversation so far is everything from row 4 down &mdash; and it is not only your messages.</h3>
+      <p>The model's own replies, the files it read, and every tool result are all entries in that
+        one growing list. File snippets and previous tool results are not separate slots beside the
+        conversation &mdash; they <em>enter</em> the conversation as tool-result messages, in order,
+        and then never change.</p>
+    </div>
+
+    <div class="prose" style="margin-top:26px">
+      <p class="note"><strong>One simplification:</strong> this example does a single tool call per
+        turn &mdash; read, then edit, then test &mdash; to keep the steps legible. A real agent often
+        batches several calls into one reply, which collapses this into fewer turns. The append-only
+        growth is identical either way; only the number of turns changes.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 6 ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">06 / the payoff &middot; why append-only matters</div>
+    <h2>Why the prefix has to stay byte-for-byte identical</h2>
+    <div class="prose">
+      <p class="lede">A model normally re-reads its entire input from scratch on every call. The
+        <strong>KV cache</strong> is how it avoids that: for every token it has already processed it
+        stores the intermediate attention values &mdash; the <em>keys</em> and <em>values</em>. Hand
+        it the exact same opening sequence again and it skips straight past those tokens, computing
+        only what is new at the end.</p>
+      <p class="note">That is the real reason the harness re-sends everything unchanged and only
+        appends. Each turn, the long stable prefix <em>and</em> the entire prior conversation are a
+        cache hit. Because the model already computed its own replies while generating them, the only
+        genuinely new text it has to read each turn is the <strong>tool results</strong> the harness
+        just handed back.</p>
+    </div>
+
+    <figure>
+      <div class="fig-label">fig. 7 &middot; one request, left to right</div>
+      <div>
+        <div class="cache">
+          <div class="prefix"></div>
+          <div class="tail"></div>
+        </div>
+        <div class="ckey">
+          <div><i></i><span><span class="t">Unchanged prefix</span>
+            <span class="d">stable rules, tools and the whole conversation so far &mdash; served
+              from cache</span></span></div>
+          <div class="new"><i></i><span><span class="t">New tail</span>
+            <span class="d">just-appended tool results &mdash; computed now</span></span></div>
+        </div>
+      </div>
+      <figcaption>the dashed edge is where cached work ends and fresh computation begins &mdash;
+        everything to the left of it was paid for on an earlier turn</figcaption>
+    </figure>
+
+    <div class="callout accent">
+      <h3>Change anything early and every cached value after the change is invalid.</h3>
+      <p>Edit AGENTS.md or the system prompt, reorder messages, or trim and summarize old turns to
+        fit the context limit &mdash; the model has to recompute from that point on.
+        <strong>Append-only is cheap; rewriting history is expensive.</strong> It is why editing
+        AGENTS.md mid-session costs more than it looks: it sits near the top, so the whole
+        conversation below it falls out of cache. And it is why trimming a long conversation &mdash;
+        the fix section 04 ends on &mdash; is not free either.</p>
+    </div>
+  </section>
+
+  <footer>
+    <b>[</b> Dinu Barbu <b>]</b> &middot; Senior Software Engineer &mdash; Distributed Systems &amp; Observability<br>
+    &#8627; dvinubius &middot; <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a>
+  </footer>
+
+</div>
+</body></html>

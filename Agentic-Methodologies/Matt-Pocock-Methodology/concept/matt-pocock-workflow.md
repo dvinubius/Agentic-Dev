@@ -2,20 +2,49 @@
 
 A workflow for the strategic engineer, with HITL during planning and the option to have AFT execution of issues.
 
-Work is organized in "tasks", which correspond to issues, all under one PRD.
+Work is organized in "tasks", which correspond to issues, all under one "spec" (formerly PRD).
+
+"Spec" is used somewhat loosely (not as strict as openspec or other SDD approaches are using it).
+It describes the desired system behaviour but tends to include intent, goals & constraints (busines level).
 
 Typically there is 1 session for the planning and the rest of the work is done flexibly in other sessions.
 
-Human in the loop?
+Central to planning is the grilling (human-alignment). Planning may need to span multiple sessions and include prototyping.
+In that case, /wayfinder organises the multi-session effort and tracks progress.
+
+Human in the loop? (ideally, day shift & night shift)
 - specs (idea, opt. research, opt. prototype): HITL
 - planning: HITL
 - Implementation: AFK
 - QA / Review: HITL
 
-Implementation may occur in parallel. 
+Implementation may occur on multiple tasks in parallel. 
 
-As a strategic dev, keep the code in mind at all times, even during prd creation.
+As a strategic dev, keep in mind the expected implementation (design) at all times, even during spec creation.
 
+Vertical slicing is effective in achieving quick feedback loops.
+
+Three levels of alignment-work upfront, based on the task's scope
+- none (align afterwards on human evaluation)
+- single grilling session
+- wayfinder (multiple grilling sessions)
+
+What deserves an ADR: when a decision is hard to reverse, surprising without its context, and involves a real trade-off.
+
+## Core principles & assumptions
+
+- Agent context:
+  - current app behavior from code
+  - project language from CONTEXT.md
+  - reasons behind lasting choices from ADRs.
+
+- Skills are there to augment the engineer, not the agent
+- Agent context should not go past the smart zone (< 150K tokens).
+- Agents need alignment w/ the engineer (grilling).
+- Verbosity is best mitigated using a shared vocabulary (ubiquitous language - grill with docs).
+- Certain words ("leading terms") trigger strong echoes from the agent, leading to alignment. These are key terms agents have probably seen a lot during their training — "tracer bullets", "deep modules", ...
+- Develop with quick feedback loops and small changes: create tasks such that they build small vertical slices of functionality
+- TDD - not insisting on it per se, since it has drawbacks (useless tests). Just have the agent provide proof that the solution works as required. TDD is one way to do it, but this can be in the form of after-the-fact acceptance tests based on pre-defined acceptance criteria. 
 
 ## The main flow: idea → ship
 
@@ -160,3 +189,11 @@ A broad, implementation-ready artifact describing the thing to build. It may inc
 | System Definition | Not Matt’s chosen term here                                                        | Our umbrella term for Intent + Product Spec + Implementation Brief + Verification                                           |
 | Tickets           | Work breakdown underneath the spec                                                 | Same; implementation slices derived from the agreed system definition                                                       |
 | Wayfinder         | Pre-spec map of unresolved decisions for large/foggy work                          | Pre-system-definition discovery and decision process                                                                        |
+
+
+## Automation
+
+- implementer workers pick up tasks from github issues; reviewer agents review the resulting PR; engineer approves final result
+- Hetzner box to run agents 24/7;
+- tries to make use of day-shift/night-shift
+- `improve-codebase-architecture` runs every morning => creates PR to approve

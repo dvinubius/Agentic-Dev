@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Context is compiled, not collected</title>
+<style>
+/* The brand's own subsets, not the Google-hosted builds — Google's subset ranges exclude
+   U+2190-21FF and U+2713, so `→`, `↳` and `✓` fall back to a system font from files that
+   demonstrably contain them. Built by common/scripts/build-webfonts.py; `↳` and `✓` exist
+   in neither family upstream and are composed per family. Keep the ranges in step with
+   design-system/assets/fonts.css. */
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:300 700;font-display:swap;
+  src:url("../../design-system/assets/fonts/SpaceGrotesk-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin.woff2") format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2190,U+2191,U+2192,U+2193,U+21B3,U+2212,U+2215,U+2713,U+FEFF,U+FFFD}
+@font-face{font-family:'Azeret Mono';font-style:normal;font-weight:100 900;font-display:swap;
+  src:url("../../design-system/assets/fonts/AzeretMono-latin-ext.woff2") format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+</style>
+<style>
+/* Dinu Barbu — tokens. Every colour in this file appears in tokens.css. */
+:root{
+  --ink:#141414;
+  --paper:#FAFAFA;
+  --stone:#6E6E6E;
+  --muted-on-dark:#9A9A9A;
+  --muted-strong:#B5B5B5;
+  --hairline:#E6E6E6;
+  --shade:#F0F0F0;
+  --inline-code:#EDEDED;
+
+  --ember:#A8500F;
+  --ember-light:#DE8A42;
+  --ember-hover:#8A420C;
+
+  --mark:#DCDCDC;
+  --mark-strong:#C4C4C4;
+
+  --sans:'Space Grotesk','Helvetica Neue',sans-serif;
+  --mono:'Azeret Mono','Menlo',monospace;
+
+  --track-heading:-0.022em;
+  --track-wordmark:-0.018em;
+
+  /* Measure — ONE edge, set once on the section; everything inside inherits it.
+     rem, not em: rem resolves against the ROOT 16px, so the edge holds while the
+     character count varies a little by size. 39rem = 624px ≈ 74 characters of body.
+     Never ch: ch is the zero digit, 0.641em in Space Grotesk against an average prose
+     character of 0.486em, so a ch-stated measure overshoots by ~32%. */
+  --edge:39rem;
+  --edge-wide:calc(var(--edge) * 1.5);                      /* 936px, opt-in */
+  --edge-break:calc((var(--edge) - var(--edge-wide)) / 2);  /* -156px each side */
+  --measure-mono:48em;                                      /* ≈74 characters of Azeret */
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-weight:400;
+     -webkit-font-smoothing:antialiased;font-size:17px;line-height:1.62}
+
+/* The outer track only has to be wide enough for the breakout. */
+.col{max-width:calc(var(--edge-wide) + 112px);margin:0 auto;padding:0 56px}
+.masthead,section,footer{max-width:var(--edge);margin-left:auto;margin-right:auto}
+
+figure.wide{width:var(--edge-wide);max-width:none;
+  margin-left:var(--edge-break);margin-right:var(--edge-break)}
+/* The breakout needs --edge-wide plus the track's padding to exist. Below that the
+   negative margins push the figure off both sides of the page — which is exactly what a
+   print layout does, its page box being narrower than the render window. Under the
+   threshold a wide figure returns to the reading column. */
+@media (max-width:1080px){
+  figure.wide{width:auto;max-width:100%;margin-left:0;margin-right:0}
+}
+.fig-label,figcaption{max-width:var(--measure-mono)}
+
+/* Justify at ~55 characters and above; below that too few word-spaces absorb the stretch
+   and it opens holes. Words are never split — hyphens stay off, which is what makes the
+   edge load-bearing rather than cosmetic. */
+.deck,.lede,.note,.callout p,.fignote,.close p{text-align:justify;hyphens:none;-webkit-hyphens:none}
+/* The threshold is a character count, not a viewport, so it has to hold at every width.
+   Below ~560px the reading column falls under ~55 characters. */
+@media (max-width:560px){
+  .deck,.lede,.note,.callout p,.fignote,.close p{text-align:left}
+}
+
+/* ── masthead ───────────────────────────────────────────────────────── */
+.masthead{padding:64px 0 40px}
+.wordmark{font-size:19px;font-weight:500;letter-spacing:var(--track-wordmark)}
+.wordmark b{color:var(--ember);font-weight:700}
+.masthead .deck{margin-top:24px;font-size:19px;color:var(--stone)}
+.masthead .deck strong{color:var(--ink);font-weight:500}
+/* Frontmatter: two fixed lines — what this is, then who wrote it. No sources here;
+   anything the piece cites is listed once, in the colophon. */
+.credit{font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--stone);
+        margin-top:26px;letter-spacing:.04em}
+
+/* ── sections ───────────────────────────────────────────────────────── */
+section{border-top:1px solid var(--hairline);padding:52px 0}
+.eyebrow{font-family:var(--mono);font-size:12px;color:var(--stone);letter-spacing:.04em;margin-bottom:18px}
+/* No <br> in a heading: a hard break is a layout decision frozen at one viewport width,
+   and it survives into every other one. The measure does the wrapping. */
+h1{font-size:46px;line-height:1.06;font-weight:500;letter-spacing:var(--track-heading);margin-top:22px}
+h1 b{font-weight:700}
+h1 .dot{color:var(--ember)}
+h2{font-size:32px;line-height:1.14;font-weight:500;letter-spacing:var(--track-heading);margin-bottom:16px}
+h2 b{font-weight:700}
+h3{font-size:19px;font-weight:500;letter-spacing:var(--track-heading);margin:40px 0 14px}
+p{margin-bottom:14px}
+p:last-child{margin-bottom:0}
+strong{font-weight:700}
+.lede{font-size:19px;color:var(--stone)}
+.lede strong{color:var(--ink);font-weight:500}
+.note{color:var(--stone)}
+.note strong{color:var(--ink);font-weight:500}
+/* Space Grotesk has no true italic — emphasis is weight, never a synthesised slant. */
+em{font-style:normal;font-weight:500;color:var(--ink)}
+code{font-family:var(--mono);font-size:.93em;background:var(--inline-code);padding:1px 5px}
+sub{font-size:.72em;line-height:0}
+
+/* ── figure frame ───────────────────────────────────────────────────────
+   A figure's diagram sits on --paper inside a 1px --mark-strong frame, label and caption
+   outside it. Measured against --paper: a --shade row separates at 1.09:1 while an --ink
+   row inside the same figure separates at 17.65:1 — a 16x asymmetry that makes the top of
+   an unframed figure read as part of the paragraph above it and the bottom read as
+   something else entirely. The frame is --mark-strong (1.67:1), not --hairline (1.20:1 on
+   paper — it disappears against the very panel it is meant to outline). The code surface
+   is excepted: it is its own ground, and a frame around Ink draws a second edge 1px off a
+   17.65:1 one. */
+/* The space below a figure has to beat the space between two paragraphs, or the sentence
+   under it reads as a second caption. 46px against a 14px paragraph gap; the figure's own
+   caption sits 16px under the frame, so the caption stays attached to the figure and the
+   prose does not. A figure that ends a section keeps a small margin — the section's own
+   52px padding and its hairline already do the separating there. */
+figure{margin:34px 0 46px}
+section > figure:last-child{margin-bottom:6px}
+figure > :not(.fig-label):not(figcaption):not(.code){
+  background:var(--paper);
+  border:1px solid var(--mark-strong);
+  padding:20px;
+}
+.fig-label{font-family:var(--mono);font-size:12px;color:var(--stone);letter-spacing:.04em;margin-bottom:14px}
+figcaption{font-family:var(--mono);font-size:12px;color:var(--stone);margin-top:16px;line-height:1.55}
+
+/* ── callout — never framed; it carries an accent rule instead, so the frame stays a
+      reliable signal that what it encloses is a figure. ─────────────────── */
+.callout{background:var(--shade);padding:26px 28px;margin-top:30px;box-shadow:inset 4px 0 0 var(--ember)}
+.callout h3{margin:0 0 10px}
+.callout p{color:var(--stone);font-size:16px}
+.callout p strong{color:var(--ink);font-weight:500}
+
+/* ── hero: the stage strip ──────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Shade cell     = a compile stage — six peers, differing by number and label, not colour
+     Ember rule     = the loop, stated as a line of text under the run [accent, once]
+   Order is carried by the numbers alone; nothing in the row is drawn or coloured to rank
+   one cell above another.
+   Rejected: a seventh chip reading "…then persist & repeat". It put a claim about the six
+   stages in the same shape as the stages, so the strip read as seven of one thing. */
+/* The claim closes the figure rather than opening it: it is what happens after the sixth
+   box, so it sits under the run. */
+.strip-head{font-size:17px;font-weight:500;letter-spacing:-.01em;line-height:1.4;
+            padding-left:14px;box-shadow:inset 4px 0 0 var(--ember);margin-top:26px}
+/* Six equal cells in one row, no connectors: the numbers carry the order. That is the
+   whole reason they are there — an arrow between cells only restates what 01→06 already
+   says, and it is the arrows, not the numbers, that stop being true when the row reflows
+   into two rows on a narrow page. */
+/* Row gap 10px against a 2px column gap: when the row wraps, the wider horizontal channel
+   is what tells the reader the second row is a continuation rather than a second group. */
+.strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px 2px}
+.cell{background:var(--shade);padding:16px 8px 18px;text-align:center}
+.cell .n{font-family:var(--mono);font-size:11px;color:var(--stone);letter-spacing:.06em}
+/* 12.5px, not 13: "transform" is the longest label, and at 13 it runs 1px wider than the
+   cell the reading column leaves it. */
+.cell .l{font-family:var(--mono);font-size:12.5px;color:var(--ink);margin-top:7px}
+
+/* ── figure: before / after ─────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Shade panel      = accumulate — the default the doc replaces
+     Ink panel        = compile — the working set the doc argues for
+     Ember Light rule = "this is the one that matters" [accent, once]
+   Valence is carried by the glyphs (× failure, ✓ objective) and by the prose — never by
+   colour. Rejected: the source's red ✕ list against a teal-bordered card, which made hue
+   mean good/bad and spent the accent on both panels at once. */
+.split{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.panel{background:var(--shade);padding:24px 24px 26px}
+.panel .lab{font-family:var(--mono);font-size:12px;color:var(--stone);margin-bottom:14px;letter-spacing:.04em}
+.panel p{font-size:16px;line-height:1.5}
+.panel.after{background:var(--ink);color:var(--paper);box-shadow:inset 0 4px 0 var(--ember-light)}
+.panel.after .lab{color:var(--muted-on-dark)}
+.panel.after p{color:var(--muted-strong)}
+/* The mark hangs by a negative text-indent, NOT by an absolutely positioned ::before. An
+   absolute pseudo-element gets a line box of its own — 13px x 1.42 against the item's
+   16px x 1.42 — and two line boxes that start at the same top do not share a baseline, so
+   the mark floats ~3px high and reads as a superscript. Inline, it sits in the item's own
+   line box and its baseline is the text's baseline, whatever either font-size becomes.
+   Size .93em, the brand's mono scale against the item's 16px: at 13px the mark's ink is
+   shorter than the sans x-height beside it and reads as a stray tick. */
+ul.marks{list-style:none;margin-top:14px}
+ul.marks li{font-size:16px;line-height:1.42;padding-left:22px;text-indent:-22px;margin-bottom:9px}
+ul.marks li:last-child{margin-bottom:0}
+ul.marks li::before{display:inline-block;width:22px;text-indent:0;
+  font-family:var(--mono);font-size:.93em;color:var(--stone)}
+ul.marks.bad li::before{content:"\00D7"}
+ul.marks.good li::before{content:"\2713";color:var(--muted-on-dark)}
+.panel.after ul.marks li{color:var(--muted-strong)}
+.panel.after ul.marks li strong{color:var(--paper)}
+
+/* ── figure: the pipeline ───────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Ink block        = model-visible context — the output the whole pipeline exists to produce
+     Mark blocks      = available information and the six stages — the machinery; they differ
+                        by position and label, not colour
+     Ember rule       = persist — the one block that writes rather than reads: its output is
+                        not part of this invocation at all, which is this section's claim
+                        [accent, once]
+   Arrows are Ink: structure, not neutral fill. The return path is a Mark Strong dash — a
+   connector the eye must follow across the whole figure, which is what Mark Strong is
+   calibrated for. Rejected: an Ember return arrow — it would spend the accent on the path
+   rather than on the block the section is about, and flow arrows are Ink by rule. */
+.diagram{width:100%;height:auto;display:block}
+.diagram text{font-family:var(--sans)}
+.diagram .mono{font-family:var(--mono)}
+
+/* Narrow variant of the same figure. The SVG scales as one piece, so at the reading
+   column its 12px labels fall under 8px — unreadable. Below the breakout guard it is
+   replaced by a stacked version carrying the identical encoding: Mark = machinery,
+   Ink = model-visible context, Ember rule = persist. A stack still asserts a sequence,
+   which is true here — the six stages do run in order. */
+/* The stack gives up a lane on the right so the return path can be drawn rather than
+   described: the same Mark Strong dash, the same Ink arrowhead entering the top block.
+   The lane's vertical run is pinned by the grid, not by measured pixels — it is three
+   items in column 2, the top one filling the bottom half of the first block's row, the
+   bottom one the top half of the last block's row, and one spanning everything between.
+   Each therefore starts and ends exactly at a block's vertical centre whatever the text
+   inside it wraps to. The horizontal stubs are children of the blocks themselves, at
+   top:50%, for the same reason. */
+.pipe-m{display:none;--lane:104px;grid-template-columns:1fr var(--lane)}
+.pipe-m > *{grid-column:1}
+.pipe-m .lane{grid-column:2;border-right:2px dashed var(--mark-strong);margin-right:6px}
+.pipe-m .lane.t{grid-row:1;align-self:end;height:50%}
+.pipe-m .lane.m{grid-row:2 / 7}
+.pipe-m .lane.b{grid-row:7;align-self:start;height:50%}
+.pipe-m .hook{position:absolute;top:50%;width:calc(var(--lane) - 8px);height:0;
+              right:calc(-1 * (var(--lane) - 8px));border-top:2px dashed var(--mark-strong)}
+.pipe-m .hook.in::after{content:"";position:absolute;left:-1px;top:-7px;
+              border:7px solid transparent;border-right:10px solid var(--ink);border-left:0}
+/* At the exit, not at the midpoint of the run: a label halfway up the lane is equidistant
+   from both ends and reads as naming the lane rather than the arrow leaving this block. */
+.pipe-m .retlab{position:absolute;bottom:calc(50% + 8px);text-align:right;line-height:1.35;
+              width:calc(var(--lane) - 18px);right:calc(-1 * (var(--lane) - 14px));
+              font-family:var(--mono);font-size:11px;color:var(--stone)}
+.pipe-m .bar{position:relative;background:var(--mark);padding:13px 14px;text-align:center}
+.pipe-m .bar .t{font-size:15px;font-weight:700}
+.pipe-m .bar .s{font-family:var(--mono);font-size:11px;color:var(--stone);margin-top:3px;line-height:1.4}
+.pipe-m .steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px}
+.pipe-m .steps div{background:var(--mark);font-family:var(--mono);font-size:12px;padding:10px}
+.pipe-m .down{text-align:center;font-size:15px;color:var(--ink);line-height:1;padding:8px 0}
+.pipe-m .out{background:var(--ink);padding:13px 14px;text-align:center}
+.pipe-m .out .t{font-size:15px;font-weight:700;color:var(--paper)}
+.pipe-m .out .s{font-family:var(--mono);font-size:11px;color:var(--muted-on-dark);margin-top:3px}
+.pipe-m .persist{position:relative;background:var(--shade);padding:13px 14px 13px 16px;
+                 text-align:center;box-shadow:inset 4px 0 0 var(--ember)}
+.pipe-m .persist .t{font-size:14px;font-weight:700}
+.pipe-m .persist .s{font-family:var(--mono);font-size:11px;color:var(--stone);margin-top:3px}
+
+/* ── stage definitions — six peers, no colour claim at all ──────────── */
+.defs{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.def{background:var(--shade);padding:18px 20px 20px}
+.def .n{font-family:var(--mono);font-size:12px;color:var(--stone);margin-bottom:8px}
+.def p{font-size:15px;line-height:1.5;color:var(--stone)}
+.def p strong{color:var(--ink);font-weight:500}
+
+/* ── code surface ───────────────────────────────────────────────────────
+   Encoding — the fixed brightness ramp, no colour categories:
+     Paper         = the emphasized lines — the eight arguments
+     Muted Strong  = body
+     Muted on dark = comments
+     Ember Light   = the one line that matters — the signature itself, because the
+                     subscript t is the whole point of the section [accent, once]
+   Rejected: the source colours the callee `compile` and leaves the subscript unmarked,
+   which accents a token nobody is being asked to notice. */
+/* 13px, not 14: at 14 the longest argument line runs 638px of content against 568px of
+   reading column, and the block is the one element here allowed its own horizontal scroll
+   — so it would have scrolled on a desktop screen with room to spare on either side. */
+.code{background:var(--ink);color:var(--muted-strong);font-family:var(--mono);
+      font-size:13px;line-height:1.85;padding:24px;white-space:pre}
+.code .sig{color:var(--ember-light)}
+.code .k{color:var(--paper)}
+.code .c{color:var(--muted-on-dark)}
+/* Below the column's natural width the signature no longer fits; it is the one block
+   allowed its own horizontal scroll, since wrapping it would destroy the alignment that
+   carries the argument list. */
+.code{overflow-x:auto}
+
+/* ── figure: seven classes ──────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Shade card                  = one of the seven context classes — peers, distinguished
+                                   by their labels alone
+     Ink card + Ember Light rule = not a class: the rule that governs all seven [accent, once]
+   Rejected: tinting the eighth cell to match the source. It made a rule about the classes
+   look like an eighth class. */
+.grid7{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+.cls{background:var(--shade);padding:16px 18px 18px}
+.cls .t{font-size:16px;font-weight:700;margin-bottom:6px;letter-spacing:-.01em}
+.cls .s{font-size:14px;line-height:1.42;color:var(--stone)}
+.cls.rule{background:var(--ink);box-shadow:inset 0 4px 0 var(--ember-light)}
+.cls.rule .s{color:var(--muted-on-dark)}
+.cls.rule .s strong{color:var(--paper)}
+
+/* Triad — deliberately uncoloured. Context, Memory and Sources of truth are three genuine
+   categories, but giving each a hue would assert a ranking the doc denies; the heading and
+   the labels carry the distinction. */
+.triad{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.tri{background:var(--shade);padding:18px 20px 20px}
+.tri .t{font-size:17px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.tri .s{font-size:15px;line-height:1.45;color:var(--stone)}
+.tri .s strong{color:var(--ink);font-weight:500}
+
+/* ── figure: the traced pass ────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Ember rule on the last row = persist — the row where the loop closes [accent, once]
+   Every stage row is neutral and identical: the trace's point is that each stage earns its
+   keep, not that any one of them outranks the others. The Ember here is the same claim as
+   in the pipeline figure — the loop closes at persist — so the two figures encode alike. */
+.trace{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:132px 1fr;gap:22px;padding:16px 2px;
+     border-bottom:1px solid var(--hairline)}
+.row .stg{font-family:var(--mono);font-size:14px;color:var(--ink)}
+/* Capped on its own: this is running prose inside a breakout, where the section's edge no
+   longer constrains it. 38em at 16px is ~78 characters — under the 85 ceiling. */
+.row p{font-size:16px;line-height:1.5;color:var(--stone);max-width:38em}
+.row p strong{color:var(--ink);font-weight:500}
+.row.persist{background:var(--shade);border-bottom:none;
+             box-shadow:inset 4px 0 0 var(--ember);padding:18px 18px 18px 20px;margin-top:2px}
+
+/* ── figure: four hats ──────────────────────────────────────────────────
+   Encoding — what each colour claims:
+     Shade card                  = one of the four hats — peers
+     Ink band + Ember Light rule = the cross-cutting responsibility that spans all four, and
+                                   the section's closing claim: tunable only if observable
+                                   [accent, once]
+   Value carries "different kind of thing"; hue carries nothing. */
+/* The band is a sibling of the grid inside ONE framed wrapper, not a second framed child
+   of the figure — a frame of its own would make the cross-cutting row read as a second
+   figure rather than as the row that spans the four. */
+.grid4{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.hat{background:var(--shade);padding:20px 22px 22px}
+.hat .t{font-size:18px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.hat .s{font-size:15px;line-height:1.5;color:var(--stone)}
+.band{background:var(--ink);color:var(--muted-on-dark);padding:20px 22px;margin-top:2px;
+      box-shadow:inset 0 4px 0 var(--ember-light)}
+/* Capped on its own: prose inside a breakout, where the section's edge no longer holds it.
+   40em at 15px is ~82 characters. */
+.band p{font-size:15px;line-height:1.55;max-width:40em;margin:0;color:var(--muted-on-dark)}
+.band strong{color:var(--paper);font-weight:500}
+
+/* ── glossary — not a figure, so no frame; four peers, no colour claim ── */
+.terms{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:18px}
+.term{background:var(--shade);padding:16px 20px;font-size:16px;line-height:1.45;color:var(--stone)}
+.term strong{color:var(--ink);font-weight:500}
+
+/* ── the audit — numbered questions, no colour claim; the accent for this
+      section is spent on the callout's rule. ──────────────────────────── */
+.asks{display:flex;flex-direction:column;margin-top:26px;border-top:1px solid var(--hairline)}
+.ask{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:16px 0;
+     border-bottom:1px solid var(--hairline)}
+.ask .n{font-family:var(--mono);font-size:13px;color:var(--stone);padding-top:3px}
+.ask .q{font-size:17px;font-weight:500;letter-spacing:-.01em}
+.ask .a{font-size:15px;line-height:1.5;color:var(--stone);margin-top:5px}
+.ask .a strong{color:var(--ink);font-weight:500}
+
+/* ── colophon ────────────────────────────────────────────────────────
+   Two fixed lines — identity, then signature. A piece that cites something lists its
+   sources here, below those two lines, and nowhere else; this one cites nothing. */
+footer{border-top:1px solid var(--hairline);padding:26px 0 72px;
+       font-family:var(--mono);font-size:12px;color:var(--stone);line-height:1.9}
+footer b{color:var(--ember);font-weight:400}
+
+/* Brand link: ink text, 1px ember bottom border. Never underlined. */
+.qlink{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--ember);padding-bottom:1px}
+.qlink:hover{color:var(--ember-hover);border-bottom-color:var(--ember-hover)}
+
+/* Below the breakout guard every wide figure returns to the reading column, so the
+   arrangements composed for 936px have to give up columns here — and the pipeline SVG,
+   which scales as one piece, hands over to its stacked twin. */
+@media (max-width:1080px){
+  .diagram{display:none}
+  .pipe-m{display:grid}
+  .grid7{grid-template-columns:1fr 1fr}
+  .defs{grid-template-columns:1fr 1fr}
+}
+
+@media (max-width:720px){
+  body{font-size:16px}
+  .col{padding:0 22px}
+  h1{font-size:34px}
+  h2{font-size:25px}
+  .lede,.masthead .deck{font-size:17px}
+  .split,.defs,.grid7,.triad,.grid4,.terms{grid-template-columns:1fr}
+  /* Two rows of three, not six rows of one: the numbers keep the order readable across the
+     wrap, which a row of arrows could not have done. */
+  .strip{grid-template-columns:repeat(3,1fr)}
+  /* The lane narrows with the page, but never below the label's own width — the label is
+     what makes the arrow mean "next pass" rather than just "back up there". */
+  .pipe-m{--lane:82px}
+  .pipe-m .steps{grid-template-columns:1fr 1fr}
+  /* Stacked, a two-column stage row is no longer a row of peers reading left to right,
+     so the label column goes above its text rather than beside it. */
+  .row{grid-template-columns:1fr;gap:6px}
+  .row.persist{padding:16px 14px 16px 16px}
+  .ask{grid-template-columns:26px 1fr;gap:10px}
+  .code{font-size:12.5px;padding:20px 18px}
+  figure > :not(.fig-label):not(figcaption):not(.code){padding:14px}
+  section{padding:40px 0}
+  .masthead{padding:44px 0 32px}
+  .callout{padding:22px 20px}
+}
+</style></head>
+<body>
+
+<div class="col">
+
+  <header class="masthead">
+    <div class="wordmark"><b>[</b> Dinu Barbu <b>]</b></div>
+    <h1>Context is <b>compiled</b>, not collected<span class="dot">.</span></h1>
+    <p class="deck">A context management system is not storage. It is a <strong>compiler</strong>
+      that runs once per model call, and the thing it emits is thrown away immediately
+      afterwards.</p>
+    <div class="credit">// an explainer<br><br>
+      &#8627; dvinubius &middot; <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a></div>
+  </header>
+
+  <!-- ═══ 1. the lesson ═══════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">01 / the lesson</div>
+    <h2>What a context management system actually is</h2>
+    <p class="lede">A <strong>context management system</strong> is the runtime machinery that turns
+      all potentially available information into the <strong>smallest sufficient working set</strong>
+      for one particular model invocation.</p>
+    <p class="note">Three words in that sentence do the work. <em>Smallest</em>, because tokens are
+      budget. <em>Sufficient</em>, because the task still has to succeed. <em>One particular</em>,
+      because the next invocation gets a different working set, built again from scratch.</p>
+
+    <figure>
+      <div class="fig-label">fig. 1 &middot; the six stages, and what happens after each run</div>
+      <div class="stage-strip">
+        <div class="strip">
+          <div class="cell"><div class="n">01</div><div class="l">authorize</div></div>
+          <div class="cell"><div class="n">02</div><div class="l">retrieve</div></div>
+          <div class="cell"><div class="n">03</div><div class="l">rank</div></div>
+          <div class="cell"><div class="n">04</div><div class="l">transform</div></div>
+          <div class="cell"><div class="n">05</div><div class="l">compress</div></div>
+          <div class="cell"><div class="n">06</div><div class="l">assemble</div></div>
+        </div>
+        <div class="strip-head">After each run, persist and repeat.</div>
+      </div>
+      <figcaption>The persist-and-repeat is what makes this a compiler rather than a queue &mdash;
+        the run ends by leaving something behind for the run after it</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══ 2. the transformation ═══════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">02 / the reframe</div>
+    <h2>Storage problem? No &mdash; an <b>optimization</b> problem.</h2>
+    <p class="note">The naive mental model treats the context window as a bucket: keep appending
+      messages, files, and tool results until it overflows. The system described here replaces that
+      with an explicit objective &mdash; and once there is an objective, the six familiar complaints
+      about long sessions stop being symptoms and become the quantities being minimized.</p>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 2 &middot; the same window, under two different mandates</div>
+      <div class="split">
+        <div class="panel">
+          <div class="lab">before &middot; accumulate</div>
+          <p>Everything that ever entered the conversation stays visible. The window fills with:</p>
+          <ul class="marks bad">
+            <li>irrelevant tokens</li>
+            <li>latency and cost</li>
+            <li>stale or contradictory information</li>
+            <li>information leakage</li>
+            <li>prompt-injection exposure</li>
+            <li>loss of important state when it finally overflows</li>
+          </ul>
+        </div>
+        <div class="panel after">
+          <div class="lab">after &middot; compile</div>
+          <p>Each invocation gets a freshly built working set, chosen to:</p>
+          <ul class="marks good">
+            <li><strong>maximize</strong> expected task performance</li>
+            <li><strong>minimize</strong> every one of them &mdash; simultaneously</li>
+          </ul>
+          <p style="margin-top:16px">Those six failure modes aren&rsquo;t accidents of long
+            conversations; they are the exact quantities the system is built to drive down, on every
+            single call.</p>
+        </div>
+      </div>
+      <figcaption>the dark panel is the state the doc argues for &mdash; not a better category of
+        thing, a different one</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══ 3. the architecture ═════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">03 / the architecture</div>
+    <h2>Six stages &mdash; and a loop back</h2>
+    <p class="note">The core architecture is a pipeline from <strong>available information</strong> to
+      <strong>model-visible context</strong>. Crucially, it doesn&rsquo;t end at the model: what the
+      invocation produces is extracted into persistent state, which becomes available information for
+      the <strong>next</strong> compile pass. Every block below reads, and assembles what it read
+      into this one call &mdash; except the last, which <em>writes</em>. That is the difference the
+      marked rule points at, here and everywhere else in this piece.</p>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 3 &middot; one compile pass, and the path back into the next one</div>
+      <svg class="diagram" viewBox="0 0 900 352" xmlns="http://www.w3.org/2000/svg"
+           role="img" aria-label="Pipeline from available information through six stages to model-visible context, then extracted to persistent state and looped back">
+
+        <!-- available information -->
+        <rect x="10" y="8" width="800" height="48" fill="var(--mark)"/>
+        <text x="410" y="28" text-anchor="middle" dominant-baseline="middle"
+              font-size="15" font-weight="700" fill="var(--ink)">available information</text>
+        <text x="410" y="45" text-anchor="middle" dominant-baseline="middle" class="mono"
+              font-size="11" fill="var(--stone)">sources, tools, memories, artifacts, conversation&hellip;</text>
+
+        <path d="M 410 56 L 410 78" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 410 88 L 403 76 L 417 76 Z" fill="var(--ink)"/>
+
+        <!-- six stages -->
+        <rect x="10"  y="92" width="118" height="48" fill="var(--mark)"/>
+        <rect x="146" y="92" width="118" height="48" fill="var(--mark)"/>
+        <rect x="282" y="92" width="118" height="48" fill="var(--mark)"/>
+        <rect x="418" y="92" width="118" height="48" fill="var(--mark)"/>
+        <rect x="554" y="92" width="118" height="48" fill="var(--mark)"/>
+        <rect x="690" y="92" width="118" height="48" fill="var(--mark)"/>
+
+        <text x="69"  y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">01</text>
+        <text x="205" y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">02</text>
+        <text x="341" y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">03</text>
+        <text x="477" y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">04</text>
+        <text x="613" y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">05</text>
+        <text x="749" y="110" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="10.5" fill="var(--stone)">06</text>
+
+        <text x="69"  y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">authorize</text>
+        <text x="205" y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">retrieve</text>
+        <text x="341" y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">rank</text>
+        <text x="477" y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">transform</text>
+        <text x="613" y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">compress</text>
+        <text x="749" y="126" text-anchor="middle" dominant-baseline="middle" class="mono" font-size="12.5" fill="var(--ink)">assemble</text>
+
+        <path d="M 128 116 L 138 116" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 146 116 L 136 111 L 136 121 Z" fill="var(--ink)"/>
+        <path d="M 264 116 L 274 116" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 282 116 L 272 111 L 272 121 Z" fill="var(--ink)"/>
+        <path d="M 400 116 L 410 116" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 418 116 L 408 111 L 408 121 Z" fill="var(--ink)"/>
+        <path d="M 536 116 L 546 116" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 554 116 L 544 111 L 544 121 Z" fill="var(--ink)"/>
+        <path d="M 672 116 L 682 116" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 690 116 L 680 111 L 680 121 Z" fill="var(--ink)"/>
+
+        <path d="M 410 140 L 410 166" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 410 176 L 403 164 L 417 164 Z" fill="var(--ink)"/>
+
+        <!-- model-visible context: the output the pipeline exists to produce -->
+        <rect x="210" y="178" width="400" height="56" fill="var(--ink)"/>
+        <text x="410" y="199" text-anchor="middle" dominant-baseline="middle"
+              font-size="15" font-weight="700" fill="var(--paper)">model-visible context</text>
+        <text x="410" y="217" text-anchor="middle" dominant-baseline="middle" class="mono"
+              font-size="11" fill="var(--muted-on-dark)">the smallest sufficient working set</text>
+
+        <path d="M 410 234 L 410 262" stroke="var(--ink)" stroke-width="1.5" fill="none"/>
+        <path d="M 410 272 L 403 260 L 417 260 Z" fill="var(--ink)"/>
+
+        <!-- persist: the accent, spent once — this is where the loop closes -->
+        <rect x="210" y="274" width="400" height="56" fill="var(--shade)"/>
+        <rect x="210" y="274" width="4" height="56" fill="var(--ember)"/>
+        <text x="414" y="295" text-anchor="middle" dominant-baseline="middle"
+              font-size="14" font-weight="700" fill="var(--ink)">extract decisions, memories &amp; artifacts</text>
+        <text x="414" y="313" text-anchor="middle" dominant-baseline="middle" class="mono"
+              font-size="11" fill="var(--stone)">&#8594; persistent state</text>
+
+        <!-- return path: a connector the eye must follow across the figure, so Mark Strong.
+             The label sits at the exit, not at the midpoint of the run — a label halfway up
+             the right lane is equidistant from both ends and reads as naming the lane. -->
+        <path d="M 610 302 L 856 302 L 856 32 L 826 32" stroke="var(--mark-strong)"
+              stroke-width="1.5" fill="none" stroke-dasharray="5 5"/>
+        <path d="M 812 32 L 826 25 L 826 39 Z" fill="var(--ink)"/>
+        <text x="622" y="291" text-anchor="start" dominant-baseline="middle" class="mono"
+              font-size="11" fill="var(--stone)">available next time</text>
+      </svg>
+      <div class="pipe-m">
+        <div class="bar"><div class="t">available information</div>
+          <div class="s">sources, tools, memories, artifacts, conversation&hellip;</div>
+          <span class="hook in"></span></div>
+        <div class="down">&#8595;</div>
+        <div class="steps">
+          <div>01 authorize</div><div>02 retrieve</div><div>03 rank</div>
+          <div>04 transform</div><div>05 compress</div><div>06 assemble</div>
+        </div>
+        <div class="down">&#8595;</div>
+        <div class="out"><div class="t">model-visible context</div>
+          <div class="s">the smallest sufficient working set</div></div>
+        <div class="down">&#8595;</div>
+        <div class="persist"><div class="t">extract decisions, memories &amp; artifacts</div>
+          <div class="s">&#8594; persistent state</div>
+          <span class="hook exit"></span>
+          <span class="retlab">available next time</span></div>
+        <span class="lane t"></span><span class="lane m"></span><span class="lane b"></span>
+      </div>
+      <figcaption>the marked block is the only one whose output this invocation never sees &mdash;
+        it writes forward, into the pass after it</figcaption>
+    </figure>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 4 &middot; what each stage is responsible for</div>
+      <div class="defs">
+        <div class="def"><div class="n">01 / authorize</div><p>Determine what this user, agent, and
+          task are allowed to access.</p></div>
+        <div class="def"><div class="n">02 / retrieve</div><p>Locate candidate sources, connectors,
+          tools, memories, artifacts.</p></div>
+        <div class="def"><div class="n">03 / rank</div><p>Estimate which pieces are useful for the
+          <strong>present step</strong>.</p></div>
+        <div class="def"><div class="n">04 / transform</div><p>Convert heterogeneous state into
+          model-ready instructions, evidence, and messages.</p></div>
+        <div class="def"><div class="n">05 / compress</div><p>Trim, summarize, deduplicate, or defer
+          to fit token, cost, and latency budgets.</p></div>
+        <div class="def"><div class="n">06 / assemble</div><p>Build the final structured input for the
+          chosen model.</p></div>
+      </div>
+      <figcaption>six peers &mdash; no stage is marked, because the order is the claim, not any one
+        of them</figcaption>
+    </figure>
+
+    <div class="callout">
+      <h3>Why authorize comes first, not last</h3>
+      <p>Policy runs <strong>before</strong> retrieval. A system that retrieves first and filters
+        afterwards has already loaded the forbidden data into a process that can leak it &mdash; and
+        it has already paid for it. Put the same check at stage 01 and the data is never a candidate
+        at all.</p>
+    </div>
+  </section>
+
+  <!-- ═══ 4. the signature ════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">04 / the signature</div>
+    <h2>context<sub>t</sub> is a function, not a variable</h2>
+    <p class="note">The subscript <strong>t</strong> is the whole point &mdash; context is a
+      <strong>function evaluated at every step</strong>, not a variable that grows. Eight inputs go
+      into each evaluation:</p>
+
+    <figure>
+      <div class="fig-label">fig. 5 &middot; the compile signature</div>
+      <div class="code"><span class="sig">context<sub>t</sub> = compile(</span>
+    <span class="k">current task,</span>          <span class="c">// what step t is trying to achieve</span>
+    <span class="k">conversation state,</span>    <span class="c">// recent + summarized history</span>
+    <span class="k">durable memory,</span>        <span class="c">// preferences, decisions, learned facts</span>
+    <span class="k">available data,</span>        <span class="c">// docs, code, records, tickets</span>
+    <span class="k">available tools,</span>       <span class="c">// APIs, skills, delegable agents</span>
+    <span class="k">model characteristics,</span> <span class="c">// the chosen model shapes the format</span>
+    <span class="k">token budget,</span>          <span class="c">// hard ceiling on cost &amp; latency</span>
+    <span class="k">security policy</span>        <span class="c">// what may be seen at all</span>
+<span class="sig">)</span></div>
+      <figcaption>the accented line is the signature itself &mdash; everything else is an argument to
+        it</figcaption>
+    </figure>
+
+    <p class="note" style="margin-top:26px">Note what&rsquo;s <strong>parameters</strong> here: the
+      <strong>model</strong>, the <strong>budget</strong>, and the <strong>security policy</strong>
+      are inputs to compilation &mdash; the same task compiles differently for a different model, a
+      tighter budget, or a stricter policy. Change any one of them and you have not changed a setting;
+      you have changed what gets built.</p>
+  </section>
+
+  <!-- ═══ 5. the classes ══════════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">05 / what goes in</div>
+    <h2>Seven classes in, three places to live</h2>
+    <p class="note">The system juggles seven distinct classes of context &mdash; each with different
+      lifetime, authority, and risk:</p>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 6 &middot; the seven classes, and the rule that governs all of them</div>
+      <div class="grid7">
+        <div class="cls"><div class="t">Instructions</div>
+          <div class="s">system rules, org policies, project conventions</div></div>
+        <div class="cls"><div class="t">Task state</div>
+          <div class="s">objectives, plans, pending work, intermediate results</div></div>
+        <div class="cls"><div class="t">Conversation state</div>
+          <div class="s">recent messages, summarized history</div></div>
+        <div class="cls"><div class="t">Memory</div>
+          <div class="s">preferences, past decisions, learned facts</div></div>
+        <div class="cls"><div class="t">Evidence</div>
+          <div class="s">documents, code, records, emails, tickets, web results</div></div>
+        <div class="cls"><div class="t">Capabilities</div>
+          <div class="s">tools, APIs, skills, agents for delegation</div></div>
+        <div class="cls"><div class="t">Artifacts</div>
+          <div class="s">files, reports, patches produced during execution</div></div>
+        <div class="cls rule">
+          <div class="s"><strong>Each class earns its tokens per invocation</strong> &mdash; none is
+            &ldquo;always in&rdquo;.</div></div>
+      </div>
+      <figcaption>seven peers and one rule &mdash; the dark cell is not an eighth class</figcaption>
+    </figure>
+
+    <h3>&hellip;and the distinction the system must never blur</h3>
+    <figure class="wide">
+      <div class="fig-label">fig. 7 &middot; three words that are routinely used as one</div>
+      <div class="triad">
+        <div class="tri"><div class="t">Context</div>
+          <div class="s">What the model can see <strong>now</strong>. Ephemeral, rebuilt each
+            step.</div></div>
+        <div class="tri"><div class="t">Memory</div>
+          <div class="s">Durable information that <strong>may become</strong> context later &mdash;
+            if it wins ranking.</div></div>
+        <div class="tri"><div class="t">Sources of truth</div>
+          <div class="s">External systems facts can be <strong>re-retrieved</strong> from. Never
+            confuse a cached copy with the source.</div></div>
+      </div>
+      <figcaption>uncoloured on purpose &mdash; these are three categories, not three ranks</figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══ 6. the worked example ═══════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">06 / one pass, traced</div>
+    <h2>One compile pass, traced</h2>
+    <p class="note">An illustration of the pipeline on a familiar scenario: a coding agent&rsquo;s next
+      step is <strong>&ldquo;fix the failing test.&rdquo;</strong> Watch each stage earn its keep.</p>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 8 &middot; six stages and a persist, on one concrete task</div>
+      <div class="trace">
+        <div class="row"><div class="stg">01 authorize</div>
+          <p>This task may read the repo and its tickets &mdash; not another team&rsquo;s incident
+            channel. Policy runs <strong>before</strong> retrieval, so forbidden data is never even a
+            candidate.</p></div>
+        <div class="row"><div class="stg">02 retrieve</div>
+          <p>Pull candidates: the failing test file, the module under test, the ticket, a memory
+            noting a past decision about this module.</p></div>
+        <div class="row"><div class="stg">03 rank</div>
+          <p>The stack trace and the module outrank the ticket&rsquo;s boilerplate for
+            <strong>this</strong> step. Ranking is per-step, not per-conversation.</p></div>
+        <div class="row"><div class="stg">04 transform</div>
+          <p>Heterogeneous state becomes model-ready form: code as annotated snippets, the ticket as a
+            three-line summary, tools as structured definitions.</p></div>
+        <div class="row"><div class="stg">05 compress</div>
+          <p>Older conversation turns collapse into a summary; duplicate log lines are deduplicated;
+            low-rank candidates are deferred, not deleted &mdash; the budget holds.</p></div>
+        <div class="row"><div class="stg">06 assemble</div>
+          <p>Instructions, task state, evidence, and tool definitions are linked into the structured
+            messages this specific model expects.</p></div>
+        <div class="row persist"><div class="stg">&hellip;persist</div>
+          <p><strong>After the model runs:</strong> &ldquo;chose approach B over A&rdquo; is extracted
+            as a durable decision. Next invocation, it&rsquo;s <strong>available information</strong>
+            &mdash; the loop closes.</p></div>
+      </div>
+      <figcaption>the marked row is the same claim fig. 3 makes &mdash; the pass does not end at the
+        model, and the six rows above it are read-only in comparison</figcaption>
+    </figure>
+
+    <p class="note">Note what <em>deferred, not deleted</em> buys at stage 05. A low-rank candidate
+      that is dropped is gone; one that is deferred stays in available information and can win
+      ranking on the very next step, when the task has moved on and it is suddenly the useful
+      thing.</p>
+  </section>
+
+  <!-- ═══ 7. the compression ══════════════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">07 / the compression</div>
+    <h2>Four jobs in one system</h2>
+    <p class="note">The compact description: <strong>&ldquo;a query planner, memory manager, policy
+      engine and linker for model inputs.&rdquo;</strong> Nine responsibilities sort cleanly under
+      those four hats:</p>
+
+    <figure class="wide">
+      <div class="fig-label">fig. 9 &middot; nine responsibilities under four hats</div>
+      <div class="hats">
+      <div class="grid4">
+        <div class="hat"><div class="t">Query planner</div>
+          <div class="s">Discovery &amp; ingestion &middot; retrieval &amp; ranking &mdash; find what
+            could help and estimate what will.</div></div>
+        <div class="hat"><div class="t">Policy engine</div>
+          <div class="s">Identity &amp; policy enforcement &middot; provenance &amp; conflict handling
+            &mdash; who may see what, where facts came from, which version wins.</div></div>
+        <div class="hat"><div class="t">Memory manager</div>
+          <div class="s">Lifecycle management &mdash; what stays ephemeral, what becomes durable, what
+            expires or must be revalidated.</div></div>
+        <div class="hat"><div class="t">Linker</div>
+          <div class="s">Context compilation &middot; budget management &middot; handoff semantics
+            &mdash; build the invocation, fit the budget, and pass a sub-agent only the state it
+            needs, never the whole parent conversation.</div></div>
+      </div>
+      <div class="band"><p><strong>Cross-cutting: observability &amp; evaluation.</strong> Record
+        what context was selected and measure whether the selection improved or degraded the outcome
+        &mdash; the pipeline is tunable only if it&rsquo;s observable.</p></div>
+      </div>
+      <figcaption>four hats and the one responsibility that sits across all of them</figcaption>
+    </figure>
+
+    <h3>Keep the four terms straight</h3>
+    <div class="terms">
+      <div class="term"><strong>Context engineering</strong> &mdash; the discipline and design
+        process.</div>
+      <div class="term"><strong>Context management system</strong> &mdash; the runtime
+        implementation.</div>
+      <div class="term"><strong>Context compiler</strong> &mdash; the component that constructs one
+        specific model invocation.</div>
+      <div class="term"><strong>Memory system</strong> &mdash; the durable storage and recall
+        subsystem.</div>
+    </div>
+  </section>
+
+  <!-- ═══ 8. the reader's next action ═════════════════════════════════ -->
+  <section>
+    <div class="eyebrow">08 / what to do with this</div>
+    <h2>Six questions to ask of your own agent</h2>
+    <p class="note">Every question below is one stage of the pipeline turned back on the system you
+      already run. If the honest answer is the one in the second line, that stage is missing &mdash;
+      you have a bucket there, not a compiler.</p>
+
+    <div class="asks">
+      <div class="ask"><div class="n">01</div><div>
+        <div class="q">Does policy run before retrieval, or after?</div>
+        <div class="a">If you fetch first and filter the prompt afterwards, the forbidden data has
+          already been loaded and already been paid for. <strong>Authorize is stage 01.</strong></div>
+      </div></div>
+      <div class="ask"><div class="n">02</div><div>
+        <div class="q">Is anything in your prompt &ldquo;always in&rdquo;?</div>
+        <div class="a">A file pinned into every request is a class that stopped earning its tokens.
+          <strong>Each class earns its tokens per invocation.</strong></div>
+      </div></div>
+      <div class="ask"><div class="n">03</div><div>
+        <div class="q">Do you rank per step, or per conversation?</div>
+        <div class="a">Relevance decided once at the top of a session is stale by the third step.
+          <strong>Ranking is a function of the present step.</strong></div>
+      </div></div>
+      <div class="ask"><div class="n">04</div><div>
+        <div class="q">When you run out of room, do you drop or defer?</div>
+        <div class="a">Dropped candidates cannot come back when the task turns toward them.
+          <strong>Deferred is recoverable; deleted is not.</strong></div>
+      </div></div>
+      <div class="ask"><div class="n">05</div><div>
+        <div class="q">Where does a decision go after the model answers?</div>
+        <div class="a">If &ldquo;chose B over A&rdquo; survives only as a message in a transcript that
+          will later be summarized away, the loop never closed.
+          <strong>Extract it into persistent state.</strong></div>
+      </div></div>
+      <div class="ask"><div class="n">06</div><div>
+        <div class="q">Can you replay which context a given call was given?</div>
+        <div class="a">Without that record you cannot tell an improvement from a regression, and every
+          change to the pipeline is a guess. <strong>Tunable only if observable.</strong></div>
+      </div></div>
+    </div>
+
+    <div class="callout">
+      <h3>Start with the two that pay immediately</h3>
+      <p>Log the selected context for one week &mdash; question 06 &mdash; and move your access check
+        ahead of retrieval &mdash; question 01. The first tells you which of the other four are
+        actually costing you; the second closes the one gap whose failure mode is a
+        <strong>leak</strong> rather than a wasted token.</p>
+    </div>
+  </section>
+
+  <footer>
+    <b>[</b> Dinu Barbu <b>]</b> &middot; Senior Software Engineer &mdash; Distributed Systems &amp; Observability<br>
+    &#8627; dvinubius &middot; <a class="qlink" href="https://dinubarbu.com">dinubarbu.com</a>
+  </footer>
+
+</div>
+</body></html>
