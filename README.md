@@ -84,6 +84,8 @@ references remain beside their respective skills.
 | --- | --- |
 | [`daedalus`](skills/daedalus/SKILL.md) | Turn finished coding work into a deliberate-practice challenge. |
 | [`explain-diff`](skills/explain-diff/SKILL.md) | Create an interactive HTML explanation of a code change. |
+| [`explain-ste`](skills/explain-ste/SKILL.md) | Explain a subject in simplified technical English, in the spirit of ASD-STE100. |
+| [`explain-visually`](skills/explain-visually/SKILL.md) | Build a self-contained HTML visual explainer of a concept or architecture. |
 | [`feynman`](skills/feynman/SKILL.md) | Teach a technical theme through its mechanism, examples, and an exercise. |
 | [`neatify-code`](skills/neatify-code/SKILL.md) | Improve maintainability in a bounded code area while preserving behavior. |
 | [`no-bs-opus`](skills/no-bs-opus/SKILL.md) | Apply a direct, concise communication style. |
